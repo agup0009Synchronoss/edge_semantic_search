@@ -1,6 +1,6 @@
 # Edge Semantic Search
 
-A fully-offline Android app that searches your photo library using natural language — no server, no cloud, no account required.
+A Android POC app that searches your photo library using natural language — no server, no cloud, no account required. [EDGE DEVICE SEMANTIC SEARCH] 
 
 Type **"dinner with friends"** or **"sunset at the beach"** and the app ranks your photos by semantic similarity in milliseconds. Everything runs on-device: the ML models, the tokenizer, the index, and the search.
 

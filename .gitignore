@@ -1,0 +1,33 @@
+# ===== Gradle build outputs & caches =====
+.gradle/
+build/
+*.iml
+
+# ===== Android SDK / local config (machine-specific, never commit) =====
+local.properties
+
+# ===== IDE files =====
+.idea/
+*.iws
+*.ipr
+
+# ===== Kotlin / JVM caches =====
+.kotlin/
+
+# ===== AI assistant settings =====
+.claude/
+
+# ===== Large ML model assets (regenerate via tools/export_split.py) =====
+# text encoder ~15 MB
+app/src/main/assets/text_model_int8.onnx
+# vision encoder ~33 MB
+app/src/main/assets/vision_model_fp32.onnx
+# keep the small tokenizer op (~1.3 MB) – fast to download but annoying to rebuild
+# (no exclusion needed; listed here for clarity)
+# app/src/main/assets/custom_op_cliptok.onnx
+
+# ===== Python tooling outputs & caches =====
+tools/out/
+tools/__pycache__/
+*.pyc
+*.pyo

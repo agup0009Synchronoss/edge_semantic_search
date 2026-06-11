@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Edge Search</string>
+    <string name="indexing_notification_title">Indexing photos</string>
+    <string name="indexing_notification_text">Building search index in background…</string>
+    <string name="indexing_channel_name">Photo indexing</string>
+</resources>

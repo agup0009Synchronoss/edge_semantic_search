@@ -1,0 +1,10 @@
+venv_clip/
+hf_cache/
+_build_cache/
+__pycache__/
+*.pyc
+*.pyo
+
+# Large embedding files - upload manually to each machine
+vg_tinyclip_embeddings.pkl
+vg_clip_embeddings.pkl

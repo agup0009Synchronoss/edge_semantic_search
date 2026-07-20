@@ -31,6 +31,7 @@ pip install -r requirements.txt      # most deps already present in venv_clip
 | 2 | `python 02_precompute_image_embeddings.py` | `data/image_embeds/img_matrix.npy`, `img_ids.npy` |
 | 3 | `python 03_calibrate_thresholds.py` | `data/calibration/thresholds.npy`, `calibration_table.*` |
 | 4 | `python 04_report.py` | printed summary of Fbeta by bucket |
+| 5 | `python 05_ablation.py` | `data/calibration/ablation.json` — per-source vs combined Fbeta (optional) |
 
 Most scripts accept `--limit N` for a fast subset dry run.
 

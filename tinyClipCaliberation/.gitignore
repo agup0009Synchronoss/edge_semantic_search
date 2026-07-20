@@ -1,0 +1,7 @@
+# All generated data (annotations, images, embeddings, calibration) is multi-GB.
+# Never commit — regenerate via the 00_..04_ scripts.
+data/
+
+__pycache__/
+*.pyc
+*.pyo

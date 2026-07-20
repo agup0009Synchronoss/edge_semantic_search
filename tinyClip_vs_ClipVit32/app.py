@@ -325,17 +325,23 @@ with gr.Blocks(title="TinyCLIP vs CLIP ViT-B/32 - Visual Genome search") as demo
 
 
 if __name__ == "__main__":
-    # Set GRADIO_SHARE=1  to get a public tunnelled URL (e.g. on Jovyan/k8s).
-    # Set GRADIO_HOST=0.0.0.0 to bind to all interfaces (needed behind k8s ingress).
-    # Set GRADIO_PORT=XXXX  to override the default port.
-    _share = os.environ.get("GRADIO_SHARE", "0") == "1"
-    _host  = os.environ.get("GRADIO_HOST", "127.0.0.1")
-    _port  = int(os.environ.get("GRADIO_PORT", "7862"))
+    # Environment variable reference:
+    #   GRADIO_SHARE=1          → enable public tunnelled URL (requires valid Gradio frp cert)
+    #   GRADIO_HOST=0.0.0.0    → bind to all interfaces (needed behind k8s/JupyterHub ingress)
+    #   GRADIO_PORT=XXXX        → override default port
+    #   GRADIO_ROOT_PATH=...    → set when running behind a reverse proxy with a URL prefix,
+    #                             e.g. on JupyterHub: /user/agup0009/proxy/7862
+    #                             This makes Gradio generate correct asset/API URLs.
+    _share     = os.environ.get("GRADIO_SHARE", "0") == "1"
+    _host      = os.environ.get("GRADIO_HOST", "127.0.0.1")
+    _port      = int(os.environ.get("GRADIO_PORT", "7862"))
+    _root_path = os.environ.get("GRADIO_ROOT_PATH", "")
 
     demo.launch(
         server_name=_host,
         server_port=_port,
         share=_share,
+        root_path=_root_path,
         show_error=True,
         allowed_paths=[str(RESIZED_DIR)],
     )

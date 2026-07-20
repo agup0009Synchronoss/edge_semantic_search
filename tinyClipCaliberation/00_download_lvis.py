@@ -46,15 +46,19 @@ CHUNK = 1 << 20  # 1 MiB
 
 
 # ── Generic resumable streaming download ──────────────────────────────────────
-def stream_download(url: str, dest: pathlib.Path, verify: bool = True, desc: str | None = None) -> None:
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    if dest.exists():
-        print(f"  [skip] already downloaded: {dest.name}")
-        return
-    tmp = dest.with_suffix(dest.suffix + ".part")
+# Transient network faults we retry on (flaky VPN/proxy drops mid-stream).
+_RETRYABLE = (
+    requests.exceptions.ChunkedEncodingError,
+    requests.exceptions.ConnectionError,
+    requests.exceptions.Timeout,
+)
+
+
+def _stream_once(url: str, tmp: pathlib.Path, verify: bool, desc: str) -> bool:
+    """One attempt. Returns True if the transfer completed, False if it should
+    be retried (resuming from the current .part size)."""
     resume = tmp.stat().st_size if tmp.exists() else 0
     headers = {"Range": f"bytes={resume}-"} if resume else {}
-
     with requests.get(url, stream=True, headers=headers, verify=verify, timeout=(30, 300)) as r:
         if resume and r.status_code == 200:
             # server ignored Range -> restart from scratch
@@ -66,12 +70,40 @@ def stream_download(url: str, dest: pathlib.Path, verify: bool = True, desc: str
         mode = "ab" if resume else "wb"
         with open(tmp, mode) as f, tqdm(
             total=total or None, initial=resume, unit="B", unit_scale=True,
-            desc=desc or dest.name,
+            desc=desc,
         ) as bar:
             for chunk in r.iter_content(CHUNK):
                 if chunk:
                     f.write(chunk)
                     bar.update(len(chunk))
+        # completed if we reached the advertised total (or size unknown)
+        return (not total) or tmp.stat().st_size >= total
+
+
+def stream_download(url: str, dest: pathlib.Path, verify: bool = True,
+                    desc: str | None = None, retries: int = 10) -> None:
+    import time as _time
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if dest.exists():
+        print(f"  [skip] already downloaded: {dest.name}")
+        return
+    tmp = dest.with_suffix(dest.suffix + ".part")
+    desc = desc or dest.name
+    for attempt in range(1, retries + 1):
+        try:
+            if _stream_once(url, tmp, verify, desc):
+                break
+            print(f"  [retry {attempt}/{retries}] short read; resuming from "
+                  f"{tmp.stat().st_size/1e6:.0f} MB ...")
+        except _RETRYABLE as e:
+            have = tmp.stat().st_size if tmp.exists() else 0
+            if attempt == retries:
+                raise
+            print(f"  [retry {attempt}/{retries}] {type(e).__name__}; resuming from "
+                  f"{have/1e6:.0f} MB ...")
+            _time.sleep(min(30, 2 ** attempt))
+    else:
+        raise RuntimeError(f"download did not complete after {retries} attempts: {url}")
     tmp.replace(dest)
 
 

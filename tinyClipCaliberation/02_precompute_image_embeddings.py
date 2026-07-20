@@ -63,8 +63,10 @@ def _save(embeds: dict) -> None:
         return
     ids = np.array(sorted(embeds.keys()), dtype=np.int64)
     mat = np.stack([embeds[int(i)] for i in ids]).astype(np.float32)
-    tmp_ids = config.IMG_IDS.with_suffix(".npy.tmp")
-    tmp_mat = config.IMG_MATRIX.with_suffix(".npy.tmp")
+    # NOTE: np.save appends ".npy" unless the path already ends in ".npy", so
+    # the temp names must end in ".npy" or the replace() target won't exist.
+    tmp_ids = config.IMG_IDS.with_name(config.IMG_IDS.stem + ".tmp.npy")
+    tmp_mat = config.IMG_MATRIX.with_name(config.IMG_MATRIX.stem + ".tmp.npy")
     np.save(tmp_ids, ids)
     np.save(tmp_mat, mat)
     tmp_ids.replace(config.IMG_IDS)

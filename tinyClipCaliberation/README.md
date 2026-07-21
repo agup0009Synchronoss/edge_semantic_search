@@ -32,6 +32,8 @@ pip install -r requirements.txt      # most deps already present in venv_clip
 | 3 | `python 03_calibrate_thresholds.py` | `data/calibration/thresholds.npy`, `calibration_table.*` |
 | 4 | `python 04_report.py` | printed summary of Fbeta by bucket |
 | 5 | `python 05_ablation.py` | `data/calibration/ablation.json` — per-source vs combined Fbeta (optional) |
+| 6 | `python 06_per_tag_metrics.py` | `data/calibration/per_tag_metrics.csv` — per-tag confusion + metrics at the naive effective threshold |
+| 7 | `python 07_balanced_calibration.py` | `data/calibration/balanced_thresholds.npy` + `balanced_per_tag_metrics.csv` — balanced-subset calibration (v2) |
 
 Most scripts accept `--limit N` for a fast subset dry run.
 
@@ -80,6 +82,21 @@ classifiers (int8 text, prompt/description/question ensemble), Fβ=0.816 sweep.
 
 The per-tag `thresholds.npy` + `calibration_table.json` are usable as-is,
 especially for the `high`-confidence bucket.
+
+### Balanced calibration (v2 — `07_balanced_calibration.py`)
+
+To remove the base-rate floor, v2 calibrates each tag on a **balanced per-tag
+subset**: all P positives + P random (seeded) negatives = 2P images, sweep Fβ on
+that. This makes precision meaningful and lifts mean weighted-F1 from 0.083 to
+**~0.80** (high 0.77 / medium 0.79 / weak 0.86). Common tags reach ~0.95+
+(zebra 0.968, giraffe 0.975).
+
+Caveats: (1) rare-tag subsets are tiny — 222 tags have ≤10 images, so their
+thresholds/metrics are noise and inflate the `weak` mean; trust results in
+proportion to `subset_total` (median 74). (2) Balanced metrics are optimistic vs
+real base-rate deployment, and the balanced thresholds run lower (zebra 0.36 vs
+naive 0.41), so production precision will be lower than the balanced CSV shows —
+this is an intrinsic-separability measure, not a deployment estimate.
 
 ## Future work (deferred)
 

@@ -52,3 +52,43 @@ Most scripts accept `--limit N` for a fast subset dry run.
 All under `data/` (gitignored). Row order is fixed by `data/text/tag_order.json`
 and image row order by `data/image_embeds/img_ids.npy`. See `config.py` for the
 canonical paths.
+
+## Results (v1 full run, LVIS train)
+
+First end-to-end run: 100,169 image embeddings (vision fp32) × 1,203 tag
+classifiers (int8 text, prompt/description/question ensemble), Fβ=0.816 sweep.
+
+- **Common concrete tags calibrate well**: zebra Fβ 0.89 (P 0.96 / R 0.81),
+  giraffe 0.89, elephant 0.83, pizza 0.72, airplane 0.74.
+- **Aggregate is low**: mean per-tag Fβ ≈ 0.083 (mean P 0.10 / R 0.31). Bucket
+  thresholds: high 0.40, medium 0.42, weak 0.44; global 0.41.
+- **Prompt-ensembling ablation is flat**: prompts 0.0815 / descriptions 0.0893 /
+  questions 0.0835 / combined 0.0825 (macro Fβ) — differences are noise.
+
+### Why the aggregate is low (both effects are real, not bugs)
+
+1. **Naive-negative base-rate ceiling.** With positives-only GT and implicit
+   negatives by absence, a rare tag has ~1–50 positives against ~100K implicit
+   negatives, so precision is structurally floored near 0 for rare tags. This
+   drags the mean down and masks any text-side signal. (zebra P 0.96 confirms
+   false-positive counting is correct — the effect is the metric, not a bug.)
+2. **TinyCLIP-8M is weak on fine-grained LVIS.** It nails COCO-scale objects but
+   cannot separate e.g. `halter_top` vs `tank_top`. Prompt ensembling (which
+   helped full CLIP on ImageNet top-1) gives ~nothing here: the bottleneck is the
+   tiny vision encoder plus a precision-floored metric, and per-source text
+   vectors are near-duplicates so averaging barely moves them.
+
+The per-tag `thresholds.npy` + `calibration_table.json` are usable as-is,
+especially for the `high`-confidence bucket.
+
+## Future work (deferred)
+
+- **Federated-correct negatives** — for tag X, only count an image as a negative
+  if X is in its `neg_category_ids` or the image exhaustively annotates X
+  (`not_exhaustive_category_ids`). Shrinks the negative pool for rare tags so
+  precision/Fβ become meaningful. Highest-value next change; embeddings are
+  already computed so only `03`/`04`/`05` re-run.
+- **Per-tag ranking metric (AP / top-k)** to measure ordering quality independent
+  of the threshold precision floor.
+- **LLM-generated descriptions/questions** — `strings.jsonl` + the source-grouped
+  design already accept a `source="llm"` batch.

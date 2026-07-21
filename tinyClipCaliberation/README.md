@@ -55,15 +55,30 @@ All under `data/` (gitignored). Row order is fixed by `data/text/tag_order.json`
 and image row order by `data/image_embeds/img_ids.npy`. See `config.py` for the
 canonical paths.
 
-## Results (v1 full run, LVIS train)
+## Fβ weighting history
 
-First end-to-end run: 100,169 image embeddings (vision fp32) × 1,203 tag
-classifiers (int8 text, prompt/description/question ensemble), Fβ=0.816 sweep.
+- **v1: β=0.816** (~60/40 precision/recall). Too mild for tags with compressed
+  score distributions — e.g. `person` picked threshold 0.31 at precision=0.50
+  because raising the threshold bought too little precision for the recall cost.
+- **v2 (current): β=0.5** (~80/20 precision/recall, `config.FBETA`). Confirmed via
+  full per-threshold curve inspection that the *formula* was always correct
+  (hand-verified the algebra at multiple grid points) — the issue was the beta
+  value being too mild, not a bug. β=0.5 moves every bucket threshold tighter
+  (naive: weak 0.44→0.45, medium 0.42→0.43, high 0.40→0.41, global 0.41→0.42) and
+  raises balanced-subset mean precision from ~0.67 to **0.83** (738/1203 tags now
+  ≥0.80 precision). `person` only moves 0.50→0.53 even at this strong a lean —
+  its score distribution is genuinely too compressed to separate well (see the
+  balanced results below); this reflects TinyCLIP-8M's limits on that tag, not
+  the formula.
+
+## Results (v1 full run, LVIS train, historical — β=0.816)
+
+100,169 image embeddings (vision fp32) × 1,203 tag classifiers (int8 text,
+prompt/description/question ensemble).
 
 - **Common concrete tags calibrate well**: zebra Fβ 0.89 (P 0.96 / R 0.81),
   giraffe 0.89, elephant 0.83, pizza 0.72, airplane 0.74.
-- **Aggregate is low**: mean per-tag Fβ ≈ 0.083 (mean P 0.10 / R 0.31). Bucket
-  thresholds: high 0.40, medium 0.42, weak 0.44; global 0.41.
+- **Aggregate is low**: mean per-tag Fβ ≈ 0.083 (mean P 0.10 / R 0.31).
 - **Prompt-ensembling ablation is flat**: prompts 0.0815 / descriptions 0.0893 /
   questions 0.0835 / combined 0.0825 (macro Fβ) — differences are noise.
 
@@ -71,32 +86,37 @@ classifiers (int8 text, prompt/description/question ensemble), Fβ=0.816 sweep.
 
 1. **Naive-negative base-rate ceiling.** With positives-only GT and implicit
    negatives by absence, a rare tag has ~1–50 positives against ~100K implicit
-   negatives, so precision is structurally floored near 0 for rare tags. This
-   drags the mean down and masks any text-side signal. (zebra P 0.96 confirms
-   false-positive counting is correct — the effect is the metric, not a bug.)
+   negatives, so precision is structurally floored near 0 for rare tags
+   regardless of β. This drags the mean down and masks any text-side signal.
+   (zebra P 0.96 confirms false-positive counting is correct — the effect is the
+   metric/base-rate, not a bug; re-confirmed after switching to β=0.5, where the
+   naive-run mean precision is still only ~0.12.)
 2. **TinyCLIP-8M is weak on fine-grained LVIS.** It nails COCO-scale objects but
-   cannot separate e.g. `halter_top` vs `tank_top`. Prompt ensembling (which
-   helped full CLIP on ImageNet top-1) gives ~nothing here: the bottleneck is the
-   tiny vision encoder plus a precision-floored metric, and per-source text
-   vectors are near-duplicates so averaging barely moves them.
+   cannot separate e.g. `halter_top` vs `tank_top`, or (per the `person`
+   investigation) cases with compressed/overlapping score distributions. Prompt
+   ensembling (which helped full CLIP on ImageNet top-1) gives ~nothing here: the
+   bottleneck is the tiny vision encoder plus the precision-floored metric, and
+   per-source text vectors are near-duplicates so averaging barely moves them.
 
-The per-tag `thresholds.npy` + `calibration_table.json` are usable as-is,
-especially for the `high`-confidence bucket.
+The per-tag `thresholds.npy` + `calibration_table.json` (now at β=0.5) are usable
+as-is, especially for the `high`-confidence bucket.
 
-### Balanced calibration (v2 — `07_balanced_calibration.py`)
+## Balanced calibration (v2 — `07_balanced_calibration.py`, β=0.5)
 
-To remove the base-rate floor, v2 calibrates each tag on a **balanced per-tag
+To remove the base-rate floor, calibrate each tag on a **balanced per-tag
 subset**: all P positives + P random (seeded) negatives = 2P images, sweep Fβ on
-that. This makes precision meaningful and lifts mean weighted-F1 from 0.083 to
-**~0.80** (high 0.77 / medium 0.79 / weak 0.86). Common tags reach ~0.95+
-(zebra 0.968, giraffe 0.975).
+that. Current results (β=0.5): mean weighted-F1 = 0.800, mean precision = 0.825,
+mean recall = 0.767 (up from mean precision ~0.67 at β=0.816). By bucket: high
+0.760 / medium 0.789 / weak 0.862 (weighted-F1). Common tags reach ~0.95+
+(giraffe P 0.993, sheep P 0.981, zebra P 0.973); `person` reaches only P 0.528
+even at this lean (compressed score distribution — a real model limitation).
 
 Caveats: (1) rare-tag subsets are tiny — 222 tags have ≤10 images, so their
 thresholds/metrics are noise and inflate the `weak` mean; trust results in
 proportion to `subset_total` (median 74). (2) Balanced metrics are optimistic vs
-real base-rate deployment, and the balanced thresholds run lower (zebra 0.36 vs
-naive 0.41), so production precision will be lower than the balanced CSV shows —
-this is an intrinsic-separability measure, not a deployment estimate.
+real base-rate deployment, and the balanced thresholds run lower than the naive
+full-dataset ones, so production precision will be lower than the balanced CSV
+shows — this is an intrinsic-separability measure, not a deployment estimate.
 
 ## Future work (deferred)
 

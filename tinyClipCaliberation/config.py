@@ -59,8 +59,11 @@ EMBED_DIM = 512
 
 # ── Fbeta objective (precision-leaning) ───────────────────────────────────────
 # Fbeta = (1+b^2) * P*R / (b^2*P + R).  b^2 = w_recall / w_precision.
-# Target weighting ~60% precision / 40% recall  ->  b^2 = 0.40/0.60 = 0.667.
-FBETA = 0.816                     # set 1.0 to recover the standard F1 score
+# Target weighting ~80% precision / 20% recall -> b^2 = 0.20/0.80 = 0.25 -> b=0.5.
+# (Was 0.816 / 60-40: too mild a lean for tags with compressed score
+# distributions, e.g. "person" picked threshold 0.31 at precision=0.50 because
+# raising the threshold bought too little precision for the recall it cost.)
+FBETA = 0.5                       # set 1.0 to recover the standard F1 score
 FBETA_SQ = FBETA * FBETA
 
 # ── Cosine-threshold search grid ──────────────────────────────────────────────

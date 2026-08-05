@@ -124,6 +124,16 @@ See [`THIRD_PARTY.md`](THIRD_PARTY.md) for licensing of every upstream model and
 
 Requirements: Android Studio Hedgehog+, JDK 17+, Android SDK 35, device/emulator API 26+.
 
+A fresh clone needs `local.properties` pointing at your SDK — it is gitignored
+because the path is machine-specific. Opening the project in Android Studio
+creates it for you; otherwise write it yourself, or export `ANDROID_HOME`:
+
+```bash
+echo "sdk.dir=/path/to/Android/Sdk" > local.properties
+```
+
+Then:
+
 ```bash
 ./gradlew installDebug
 ```
@@ -142,8 +152,8 @@ On Windows, use `gradlew.bat` and point `JAVA_HOME` at the Android Studio JBR:
 set JAVA_HOME=C:\Program Files\Android\Android Studio\jbr
 ```
 
-Because the ONNX assets are committed, a fresh clone builds and runs without
-regenerating anything.
+Because the ONNX assets are committed, there is no model-generation step — once
+the SDK path is set, a fresh clone builds and runs as-is.
 
 ---
 

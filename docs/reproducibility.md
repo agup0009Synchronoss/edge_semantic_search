@@ -37,11 +37,20 @@ Expected: `All 6 assets match, and every copy agrees.`
 
 Requirements: Android Studio Hedgehog+, JDK 17+, SDK 35, device/emulator API 26+.
 
+`local.properties` is gitignored (the SDK path is machine-specific), so a fresh
+clone needs it before Gradle will run. Android Studio writes it when you open
+the project; otherwise:
+
+```bash
+echo "sdk.dir=/path/to/Android/Sdk" > local.properties
+```
+
 ```bash
 ./gradlew installDebug
 ```
 
-No asset generation step. `app/src/main/assets/*.onnx` is committed.
+That is the only setup step — `app/src/main/assets/*.onnx` is committed, so
+there is no model export to run.
 
 ---
 

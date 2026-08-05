@@ -6,15 +6,24 @@ calibration for **TinyCLIP-ViT-8M-16-Text-3M-YFCC15M** on **LVIS-v1 train**.
 Goal: for each of the 1,203 LVIS tags, build one averaged text-classifier
 embedding from many prompts/descriptions/questions, then pick the per-tag cosine
 threshold on TinyCLIP image embeddings that maximizes a **precision-leaning
-Fbeta** (`beta = 0.816`, ~60% precision / 40% recall).
+Fbeta** (`config.FBETA = 0.5`, ~80% precision / 20% recall — see
+[Fβ weighting history](#fβ-weighting-history) for why it moved from 0.816).
 
-Encoders are reused verbatim from the sibling Gradio app
-(`../common/tinyclip_encoder.py` + `assets/*.onnx`) so results are
-Android-exact: **int8** text encoder, **fp32** vision encoder, CLIP BPE tokenizer.
+Encoders are reused verbatim from `research/common/`
+(`../common/tinyclip_encoder.py` + `../common/assets/*.onnx`) so results are
+Android-exact: **int8** text encoder, **fp32** vision encoder, CLIP BPE
+tokenizer. Those are the same bytes the APK ships, held identical by
+`ASSETS.sha256`.
+
+## Results
+
+**The outputs are already committed** — see [`results/`](results/). You do not
+need to re-run any of this to use the thresholds. Balanced regime: mean
+precision **0.825**, recall **0.767**, weighted-F1 **0.800**.
 
 ## Environment
 
-Reuse the existing venv (Python 3.11):
+Reuse the sibling benchmark's venv (Python 3.11):
 
 ```powershell
 ..\vitb32_benchmark\venv_clip\Scripts\Activate.ps1

@@ -19,11 +19,13 @@ sets (~29 min for templates). The classifier `.npy` files themselves and the
 The `note` column records where the mapping was not clean:
 
 - **1036 rows** map cleanly.
-- **14 rows** are `ambiguous_sense_dropped` — RAM tags where two LVIS senses
-  both claimed the word (`bow`, `fish`, `glasses`, `mailbox`, `octopus`, `pan`,
+- **14 rows** are `ambiguous_sense_dropped` — that is **7 RAM tags × 2 competing
+  LVIS senses each** (`bow`, `fish`, `glasses`, `mailbox`, `octopus`, `pan`,
   `salmon`). Rather than pick a sense arbitrarily, these get no threshold and
   use the knob.
 - **1 row** is `review_ram_variant`.
+
+(1051 rows for 1037 calibrated tags: the 14 dropped rows are the difference.)
 
 ## Benchmark result
 

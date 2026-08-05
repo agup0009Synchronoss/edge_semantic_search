@@ -54,17 +54,31 @@ python 02_build_tag_mapping.py                    # LVIS -> RAM thresholds
 
 The `recognize-anything` source is vendored under `vendor/` (git clone, gitignored).
 
-### When the ChatGPT descriptions arrive
+### The LLM description set
 
 The `llm` classifier set is the second half of the A/B: identical pipeline, but
 the per-tag text is 10 generated visual descriptions instead of 88 templates.
 
+**The descriptions are committed** at `assets/clip_descriptions_4585.json`
+(4585 tags × 10), with the batches that produced them in `assets/tag_chunks/`.
+They are committed rather than regenerated because re-prompting yields different
+text, which would silently invalidate `classifiers_llm.npy` and every number in
+the benchmark table below.
+
 ```bash
-# drop the returned .json files into data/llm_desc/ then:
-python ingest_descriptions.py                     # validate, report gaps
-python ingest_descriptions.py --missing-out redo.json   # re-request just the gaps
 python 01_build_text_classifiers.py --source llm  # builds classifiers_llm.npy
 ```
+
+To extend the set, drop additional `.json` into `data/llm_desc/`;
+`config.description_sources()` reads the committed asset plus any drops.
+
+```bash
+python ingest_descriptions.py                          # coverage report
+python ingest_descriptions.py --missing-out redo.json  # re-request just the gaps
+```
+
+Expect `4585/4585 tags, 10.0 descriptions per tag`. If it reports 20.0, there is
+a copy of the committed asset sitting in the drop zone.
 
 Both sets are then selectable in the UI, so you can compare template-driven vs
 description-driven TinyCLIP on the same image against the same RAM++ output.
@@ -125,8 +139,9 @@ independent evidence the benchmark harness is wired correctly.
 | `01_build_text_classifiers.py` | `--source templates\|llm` → `(4585, 512)` super-embeddings |
 | `02_build_tag_mapping.py` | LVIS 1203 → RAM 4585 matching, emits audit CSV + threshold array |
 | `03_benchmark_classifiers.py` | quantitative templates-vs-llm A/B on LVIS ground truth |
-| `ingest_descriptions.py` | validates ChatGPT JSON drops, reports exactly what's missing |
-| `ssl_bypass.py` | corporate-TLS workaround; must import before transformers |
+| `ingest_descriptions.py` | validates description sources, reports exactly what's missing |
+| `assets/` | the committed LLM descriptions + the tag batches that produced them |
+| `results/` | committed mapping + benchmark outputs |
 | `ram_tagger.py` / `tinyclip_tagger.py` | the two engines, same result shape |
 | `verify_env.py` | preflight; `--full` loads RAM++ and runs one inference |
 | `smoke_compare.py` | both models in one process, no Gradio |

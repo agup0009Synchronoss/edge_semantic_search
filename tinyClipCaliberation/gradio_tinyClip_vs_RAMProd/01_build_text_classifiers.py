@@ -110,9 +110,10 @@ def build_llm_strings(tags: list[str], allow_partial: bool = False) -> tuple[lis
 
 
 def load_descriptions() -> dict[str, list[str]]:
-    """Merge every JSON drop in data/llm_desc/ into {tag: [descriptions]}."""
+    """Merge the committed description asset plus any new drops in
+    data/llm_desc/ into {tag: [descriptions]}."""
     by_tag: dict[str, list[str]] = {}
-    for path in sorted(config.LLM_DESC_DIR.glob("*.json")):
+    for path in config.description_sources():
         try:
             payload = json.loads(path.read_text(encoding="utf8"))
         except json.JSONDecodeError as e:

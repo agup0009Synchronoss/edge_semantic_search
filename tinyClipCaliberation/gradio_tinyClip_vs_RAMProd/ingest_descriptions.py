@@ -41,9 +41,12 @@ def load_files() -> tuple[dict[str, list[str]], list[str], dict[str, str]]:
     problems: list[str] = []
     case_fixed: dict[str, str] = {}
 
-    files = sorted(config.LLM_DESC_DIR.glob("*.json"))
+    files = config.description_sources()
     if not files:
-        problems.append(f"no .json files found in {config.LLM_DESC_DIR}")
+        problems.append(
+            f"no descriptions found: {config.CLIP_DESCRIPTIONS} is missing and "
+            f"there are no .json drops in {config.LLM_DESC_DIR}"
+        )
         return by_tag, problems, case_fixed
 
     for path in files:
@@ -106,7 +109,8 @@ def main() -> None:
     config.ensure_dirs()
     canonical = config.load_ram_tags()
 
-    print(f"Scanning {config.LLM_DESC_DIR}")
+    sources = config.description_sources()
+    print(f"Scanning {len(sources)} source(s): committed asset + drops in {config.LLM_DESC_DIR}")
     by_tag, problems, case_fixed = load_files()
 
     covered = [t for t in canonical if by_tag.get(t)]

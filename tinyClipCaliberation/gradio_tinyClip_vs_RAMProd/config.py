@@ -38,10 +38,29 @@ ASSETS_DIR = paths.ASSETS_DIR
 DATA = HERE / "data"
 RAM_DIR = DATA / "ram"                  # tag list, thresholds, checkpoint
 TEXT_DIR = DATA / "text"                # TinyCLIP classifiers for the 4585
-LLM_DESC_DIR = DATA / "llm_desc"        # ChatGPT description JSON drops
+LLM_DESC_DIR = DATA / "llm_desc"        # drop zone for NEW ChatGPT batches
 CACHE_DIR = DATA / "cache"
 VENDOR_DIR = HERE / "vendor"            # vendored recognize-anything source
-TAG_CHUNK_DIR = HERE / "ram_tag_chunks"  # tag files to upload to ChatGPT
+
+# ── Committed text assets ─────────────────────────────────────────────────────
+# The generated descriptions are committed, not regenerable: re-prompting yields
+# different text, which would silently invalidate classifiers_llm.npy and every
+# number in the benchmark. This file is the canonical copy — it previously
+# existed in three places on disk (here, data/llm_desc/, and the sibling
+# calibration project's data/), with nothing keeping them in sync.
+ASSETS_LOCAL = HERE / "assets"
+CLIP_DESCRIPTIONS = ASSETS_LOCAL / "clip_descriptions_4585.json"   # 10 descriptions x 4585 tags
+TAG_CHUNK_DIR = ASSETS_LOCAL / "tag_chunks"   # the batches uploaded to produce it
+
+
+def description_sources() -> list[pathlib.Path]:
+    """Every JSON to read descriptions from: the committed asset first, then any
+    new drops in data/llm_desc/. Lets you extend the set without editing the
+    committed file, while a fresh clone still works with no drops at all."""
+    out = [CLIP_DESCRIPTIONS] if CLIP_DESCRIPTIONS.is_file() else []
+    if LLM_DESC_DIR.is_dir():
+        out += [p for p in sorted(LLM_DESC_DIR.glob("*.json")) if p.name != CLIP_DESCRIPTIONS.name]
+    return out
 
 # ── RAM++ artifacts ───────────────────────────────────────────────────────────
 RAM_TAG_LIST = RAM_DIR / "ram_tag_list.txt"                # 4585 tags

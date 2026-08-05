@@ -32,7 +32,7 @@ Worth knowing before you plan a rebuild, because the answer is not uniform:
 
 | workload | uses GPU? |
 |---|---|
-| RAM++ inference (`ram_tagger.py`) | **Yes, automatically.** Already does `torch.device("cuda" if available)` — ~1.5 s/image on CPU, well under a second on GPU. |
+| RAM++ inference (`ram_tagger.py`) | **Yes, automatically.** Resolves `cuda if torch.cuda.is_available()` and reports the device in the UI status line. Measured ~1.7 s/image at 224px on CPU here; well under a second on GPU. |
 | CLIP ViT-B/32 embedding (`build_vit_embeddings.py`) | **Yes, automatically.** torch + sentence-transformers. |
 | TinyCLIP encoding — classifiers, image embeds | **No, by default.** These run on onnxruntime, which is pinned to `CPUExecutionProvider` and scales across CPU cores via a multiprocessing pool. |
 
@@ -204,15 +204,56 @@ embedding.
 cd research/ram_comparison && ./venv_ramclip/bin/python app.py
 ```
 
+The RAM++ app **shares by default** — it prints a public `*.gradio.live` URL you
+can hand to other people, which is usually what you want on a remote box where
+opening a port is awkward.
+
+> **That link is public and unauthenticated for its ~72 h life.** Anyone holding
+> it can upload images and consume your GPU. Two ways to tighten it:
+> ```bash
+> GRADIO_SHARE=0 ./venv_ramclip/bin/python app.py            # local only
+> ```
+> ```bash
+> GRADIO_AUTH=team:somepassword ./venv_ramclip/bin/python app.py
+> ```
+
+The app also **warms both models up before serving**, so the first visitor does
+not sit through the ~6 s checkpoint load with no feedback. `GRADIO_WARMUP=0`
+disables it.
+
+The CLIP app is unchanged and stays local unless you ask otherwise:
+
 ```bash
-cd research/vitb32_benchmark && ./venv_clip/bin/python app.py
+cd research/vitb32_benchmark && GRADIO_SHARE=1 ./venv_clip/bin/python app.py
 ```
 
-Both bind `127.0.0.1` by default. To reach them from elsewhere:
+To bind a port directly instead of sharing:
 
 ```bash
-GRADIO_HOST=0.0.0.0 GRADIO_PORT=7863 ./venv_ramclip/bin/python app.py
+GRADIO_SHARE=0 GRADIO_HOST=0.0.0.0 GRADIO_PORT=7863 ./venv_ramclip/bin/python app.py
 ```
+
+### Serving several people at once
+
+RAM++ runs on the GPU automatically — `ram_tagger.py` resolves
+`cuda if torch.cuda.is_available() else cpu` at construction, and the device
+appears in the UI status line after every run, so you can confirm it says
+`cuda:0` rather than guessing.
+
+Requests are queued, three concurrent by default:
+
+```bash
+GRADIO_CONCURRENCY=6 GRADIO_QUEUE_SIZE=64 ./venv_ramclip/bin/python app.py
+```
+
+Raising `GRADIO_CONCURRENCY` is not free throughput. The GPU serialises the
+RAM++ forward pass regardless, so the win comes from overlapping it with the
+CPU-side TinyCLIP encode; past a small number you are buying queueing latency
+and OOM risk. Each in-flight request holds its own activations — at 384px on a
+smaller card, 3 is already reasonable.
+
+`GRADIO_QUEUE_SIZE` bounds the backlog so a burst gets a clear "queue is full"
+rather than an unbounded wait that looks like a hang.
 
 **On JupyterHub**, do not open a port — go through the proxy. With
 `jupyter-server-proxy` installed:
@@ -275,5 +316,9 @@ that the box can actually serve the app. Expect every line to read `PASS`.
 | `FileNotFoundError: classifiers_templates.npy` | The one thing you must copy. See [What you must copy](#what-you-must-copy). |
 | App loads, thumbnails broken | `resized_224_x_224/` missing. Untar `224.tar` into `$VG_DATA_ROOT`. |
 | Page loads under JupyterHub but is blank | `GRADIO_ROOT_PATH` not set to the proxy prefix. |
+| No share link printed | The tunnel binary could not be fetched, or egress is blocked. Fall back to `GRADIO_SHARE=0 GRADIO_HOST=0.0.0.0`. |
+| Status line says `cpu` on a GPU box | torch has no CUDA build in that venv. `pip show torch` — a `+cpu` version means `setup_venv.sh` did not see `nvidia-smi`. Re-run it with `--gpu`. |
+| Second user's request hangs behind the first | Expected up to `GRADIO_CONCURRENCY` (default 3), then queued. Raise it if you have VRAM headroom. |
+| CUDA OOM under load | `GRADIO_CONCURRENCY` too high for the card, especially at 384px. Lower it. |
 | `Permission denied: ./scripts/bootstrap_jovyan.sh` | `chmod +x scripts/*.sh research/*/setup_venv.sh` — some transfer paths drop the mode bit. |
 | Killed with no traceback while loading RAM | OOM. See [Resource notes](#resource-notes). |

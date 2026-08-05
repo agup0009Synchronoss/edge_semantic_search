@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import csv
 import os
+import threading
 
 os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")
 
@@ -35,21 +36,31 @@ from ram_tagger import RamTagger
 from tinyclip_tagger import TinyClipTagger
 
 # ── Lazy singletons: RAM++ is a 2.8 GB load, don't pay it at import ───────────
+# Locked because the naive `if _x is None` is a check-then-act race once more
+# than one request can be in flight: two threads both see None and both
+# construct, which for RAM++ means loading 2.8 GB of weights twice and very
+# likely an OOM.
 _tiny: TinyClipTagger | None = None
 _ram: RamTagger | None = None
+_tiny_lock = threading.Lock()
+_ram_lock = threading.Lock()
 
 
 def get_tiny() -> TinyClipTagger:
     global _tiny
     if _tiny is None:
-        _tiny = TinyClipTagger()
+        with _tiny_lock:
+            if _tiny is None:
+                _tiny = TinyClipTagger()
     return _tiny
 
 
 def get_ram() -> RamTagger:
     global _ram
     if _ram is None:
-        _ram = RamTagger()
+        with _ram_lock:
+            if _ram is None:
+                _ram = RamTagger()
     return _ram
 
 
@@ -260,12 +271,75 @@ def build_ui() -> gr.Blocks:
     return demo
 
 
+def _env_flag(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
 if __name__ == "__main__":
     demo = build_ui()
+
+    # ── Warm up before serving ────────────────────────────────────────────────
+    # Otherwise the FIRST visitor pays the whole cold start: ~6 s for the 2.8 GB
+    # checkpoint plus the classifier load, with no feedback in the UI. On a
+    # shared link that reads as a broken app. Set GRADIO_WARMUP=0 to skip.
+    if _env_flag("GRADIO_WARMUP", True):
+        print("[app] warming up models before serving ...", flush=True)
+        try:
+            get_tiny()
+            get_ram().load()
+        except Exception as e:  # missing artifacts shouldn't stop the UI booting
+            print(f"[app] warmup failed ({type(e).__name__}: {e})\n"
+                  f"      the UI will still start; the error will surface on first use",
+                  flush=True)
+
+    # ── Concurrency ───────────────────────────────────────────────────────────
+    # Gradio queues by default, but at a concurrency limit of 1 — every extra
+    # user waits for the previous inference to finish end to end. A single
+    # request is not one homogeneous unit of work though: RAM++ is GPU (or CPU)
+    # torch while TinyCLIP is onnxruntime on CPU, so letting a couple run
+    # concurrently overlaps those and improves throughput for multiple users.
+    #
+    # Kept modest by default: the GPU serialises the RAM++ forward pass anyway,
+    # and every concurrent request holds its own activations. Raising this too
+    # far buys queueing latency and OOM risk rather than throughput. Tune with
+    # GRADIO_CONCURRENCY once you know your VRAM.
+    concurrency = int(os.environ.get("GRADIO_CONCURRENCY", "3"))
+    demo.queue(
+        default_concurrency_limit=concurrency,
+        # Bound the backlog so a burst gets a clear "queue is full" instead of
+        # an unbounded wait that looks like a hang.
+        max_size=int(os.environ.get("GRADIO_QUEUE_SIZE", "32")),
+    )
+
+    # ── Sharing ───────────────────────────────────────────────────────────────
+    # Defaults to True: this app is normally run on a remote box for other
+    # people to try, and a *.gradio.live tunnel is the path of least resistance
+    # when you cannot open a port.
+    #
+    # That link is PUBLIC and unauthenticated for its ~72h lifetime — anyone
+    # holding it can upload images and consume the GPU. Set GRADIO_SHARE=0 for
+    # local-only, or GRADIO_AUTH=user:pass to put a login in front of it.
+    share = _env_flag("GRADIO_SHARE", True)
+
+    auth = None
+    if os.environ.get("GRADIO_AUTH"):
+        user, _, pw = os.environ["GRADIO_AUTH"].partition(":")
+        auth = (user, pw)
+
+    if share and not auth:
+        print("\n[app] share=True — the *.gradio.live link is PUBLIC and "
+              "unauthenticated.\n"
+              "      GRADIO_SHARE=0 disables it; GRADIO_AUTH=user:pass adds a "
+              "login.\n", flush=True)
+
     demo.launch(
         server_name=os.environ.get("GRADIO_HOST", "127.0.0.1"),
         server_port=int(os.environ.get("GRADIO_PORT", config.GRADIO_PORT_DEFAULT)),
-        share=os.environ.get("GRADIO_SHARE", "").lower() in ("1", "true", "yes"),
+        share=share,
+        auth=auth,
         root_path=os.environ.get("GRADIO_ROOT_PATH") or None,
         # Surface real tracebacks in the UI; without this a model-load failure
         # shows only "the upstream Gradio app has raised an exception".

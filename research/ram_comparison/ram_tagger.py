@@ -21,6 +21,7 @@ deliberate:
 from __future__ import annotations
 
 import sys
+import threading
 import time
 from dataclasses import dataclass
 
@@ -54,6 +55,20 @@ class RamTagger:
         self._transform = None
         self._loaded_size = None
 
+        # Resolved here rather than in load() so `self.device` is always defined
+        # — info() and the UI status line read it, and previously anything that
+        # touched it before the first tag() raised AttributeError.
+        import torch
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        # Serialises model construction/swap. The UI lets users switch between
+        # 224 and 384, which REPLACES self._model. With more than one user that
+        # is a genuine race: A can be mid-forward on the very module B is
+        # swapping out. Inference itself needs no lock (no mutable state under
+        # torch.no_grad), so this guards the swap only and does not serialise
+        # the GPU work.
+        self._load_lock = threading.Lock()
+
     # ── lazy model load (~2.8 GB checkpoint, several seconds) ─────────────────
     def _vendor_on_path(self) -> None:
         vendor = config.VENDOR_DIR / "recognize-anything"
@@ -68,34 +83,51 @@ class RamTagger:
 
     def load(self, image_size: int | None = None):
         size = image_size or self.image_size
+
+        # Fast path: already loaded at this size. Deliberately unlocked — a
+        # correct read needs no lock, and taking one here would serialise every
+        # request behind a mutex for nothing.
         if self._model is not None and self._loaded_size == size:
             return self._model
 
-        self._vendor_on_path()
-        import torch
-        from ram.models import ram_plus
-        from ram import get_transform
+        with self._load_lock:
+            # Re-check: another thread may have loaded it while we waited.
+            if self._model is not None and self._loaded_size == size:
+                return self._model
 
-        if not config.RAM_CHECKPOINT.exists():
-            raise FileNotFoundError(
-                f"{config.RAM_CHECKPOINT.name} missing. Fetch it with:\n"
-                f"  python 00_download_ram.py"
-            )
+            self._vendor_on_path()
+            import torch
+            from ram.models import ram_plus
+            from ram import get_transform
 
-        t0 = time.time()
-        model = ram_plus(pretrained=str(config.RAM_CHECKPOINT),
-                         image_size=size, vit="swin_l")
-        model.eval()
-        # CPU only on this machine; ram_batch_inference.py's CUDA-stream path
-        # in mldev_asset/ is unusable here.
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model = model.to(self.device)
+            if not config.RAM_CHECKPOINT.exists():
+                raise FileNotFoundError(
+                    f"{config.RAM_CHECKPOINT.name} missing. Fetch it with:\n"
+                    f"  python 00_download_ram.py"
+                )
 
-        self._model = model
-        self._transform = get_transform(image_size=size)
-        self._loaded_size = size
-        self.load_seconds = time.time() - t0
-        return model
+            t0 = time.time()
+            print(f"[ram] loading checkpoint at {size}px onto {self.device} ...",
+                  flush=True)
+            model = ram_plus(pretrained=str(config.RAM_CHECKPOINT),
+                             image_size=size, vit="swin_l")
+            model.eval()
+            model = model.to(self.device)
+
+            # Free the previous size's weights before publishing the new model,
+            # or switching 224 <-> 384 repeatedly walks VRAM upwards.
+            old, self._model = self._model, None
+            del old
+            if self.device.type == "cuda":
+                torch.cuda.empty_cache()
+
+            self._model = model
+            self._transform = get_transform(image_size=size)
+            self._loaded_size = size
+            self.load_seconds = time.time() - t0
+            print(f"[ram] ready in {self.load_seconds:.1f}s on {self.device}",
+                  flush=True)
+            return model
 
     # ── inference ─────────────────────────────────────────────────────────────
     def tag(self, image: Image.Image, image_size: int | None = None,

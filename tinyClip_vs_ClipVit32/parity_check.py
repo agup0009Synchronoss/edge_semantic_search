@@ -50,11 +50,10 @@ import random
 import numpy as np
 from PIL import Image
 
+import config
 from tinyclip_encoder import TinyClipEncoder, _BOS, _EOT
 
-RESIZED_DIR = pathlib.Path(
-    r"C:\Users\agup0009\code\edge_object_detection\data\visual_genome\resized_224_x_224"
-)
+RESIZED_DIR = config.resized_dir()
 HF_PT_REPO = "wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M"
 N_IMAGES   = 5
 SEED       = 42

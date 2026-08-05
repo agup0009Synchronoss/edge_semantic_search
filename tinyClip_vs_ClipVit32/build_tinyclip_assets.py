@@ -64,9 +64,21 @@ import shutil
 import pathlib
 import numpy as np
 
+import config
+
 HERE          = pathlib.Path(__file__).parent
-ASSETS        = HERE / "assets"
-ASSETS.mkdir(exist_ok=True)
+
+# Writes into the canonical asset location shared with the Android app.
+#
+# NOTE: this OVERWRITES committed files. ONNX export is not byte-deterministic,
+# so a rerun will produce different bytes for the same model and ASSETS.sha256
+# will then fail. That is intended: re-run
+#     python research/common/parity_assets.py
+# to confirm the new export is numerically equivalent, then
+#     python research/common/verify_assets.py --write
+# to accept it. Do not update the manifest without checking parity first.
+ASSETS        = config.ASSETS_DIR
+ASSETS.mkdir(parents=True, exist_ok=True)
 OUT_CACHE     = HERE / "_build_cache"
 OUT_CACHE.mkdir(exist_ok=True)
 
@@ -75,7 +87,7 @@ HF_PT_REPO    = "wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M"
 COMBINED      = OUT_CACHE / "model_int8_combined.onnx"
 
 # Existing Android tokenizer asset (reused as-is)
-ANDROID_TOK   = HERE.parent / "app" / "src" / "main" / "assets" / "custom_op_cliptok.onnx"
+ANDROID_TOK   = config.REPO_ROOT / "app" / "src" / "main" / "assets" / "custom_op_cliptok.onnx"
 
 TEXT_OUT      = ASSETS / "text_model_int8.onnx"
 VISION_OUT    = ASSETS / "vision_model_fp32.onnx"

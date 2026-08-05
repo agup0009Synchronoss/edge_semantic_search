@@ -14,10 +14,10 @@ import pickle
 import pathlib
 import numpy as np
 
-TINY_PKL = pathlib.Path(__file__).parent / "vg_tinyclip_embeddings.pkl"
-VIT_PKL  = pathlib.Path(
-    r"C:\Users\agup0009\code\edge_object_detection\data\visual_genome\vg_clip_embeddings.pkl"
-)
+import config
+
+TINY_PKL = config.TINY_PKL
+VIT_PKL  = config.vit_pkl()
 EXPECTED = 108_079
 
 for p in (TINY_PKL, VIT_PKL):

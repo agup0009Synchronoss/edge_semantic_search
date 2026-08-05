@@ -12,12 +12,10 @@ import pathlib
 import sys
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
-RESIZED_DIR = pathlib.Path(
-    r"C:\Users\agup0009\code\edge_object_detection\data\visual_genome\resized_224_x_224"
-)
-PKL_PATH = pathlib.Path(
-    r"C:\Users\agup0009\code\edge_object_detection\data\visual_genome\vg_clip_embeddings.pkl"
-)
+import config
+
+RESIZED_DIR = config.resized_dir()
+PKL_PATH = config.vit_pkl()
 
 # ── Sanity checks ──────────────────────────────────────────────────────────────
 for p, label in [(RESIZED_DIR, "RESIZED_DIR"), (PKL_PATH, "PKL_PATH")]:

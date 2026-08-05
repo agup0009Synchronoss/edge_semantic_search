@@ -6,9 +6,10 @@ constants, and the sys.path wiring that lets us reuse the already-built
 TinyCLIP encoder and LVIS calibration artifacts.
 
 Reuse map (nothing here is re-implemented):
-  - tinyClip_vs_ClipVit32/tinyclip_encoder.py  -> TinyClipEncoder (Android-exact)
-  - tinyClipCaliberation/templates.py          -> the 88 template strings
-  - tinyClipCaliberation/data/calibration/     -> balanced per-tag thresholds
+  - research/common/tinyclip_encoder.py    -> TinyClipEncoder (Android-exact)
+  - research/common/templates.py           -> the 88 template strings
+  - research/common/ssl_bypass.py          -> corporate-TLS workaround
+  - tinyClipCaliberation/results/          -> balanced per-tag thresholds
 """
 
 from __future__ import annotations
@@ -20,15 +21,18 @@ import sys
 HERE = pathlib.Path(__file__).resolve().parent          # gradio_tinyClip_vs_RAMProd/
 CALIB_ROOT = HERE.parent                                 # tinyClipCaliberation/
 REPO_ROOT = CALIB_ROOT.parent                            # edge_semantic_search/
-ENCODER_DIR = REPO_ROOT / "tinyClip_vs_ClipVit32"        # reused ONNX encoder + assets
-ASSETS_DIR = ENCODER_DIR / "assets"
+COMMON_DIR = REPO_ROOT / "research" / "common"           # shared encoder, templates, ssl_bypass
 
-# Make the reused modules importable:
+# Make the shared modules importable:
 #   from tinyclip_encoder import TinyClipEncoder   (encoder + ONNX assets)
 #   import templates                               (the 88 template strings)
-for _p in (str(ENCODER_DIR), str(CALIB_ROOT)):
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
+#   import ssl_bypass                              (must precede transformers)
+if str(COMMON_DIR) not in sys.path:
+    sys.path.insert(0, str(COMMON_DIR))
+
+import paths  # noqa: E402  (needs COMMON_DIR on sys.path first)
+
+ASSETS_DIR = paths.ASSETS_DIR
 
 # ── Data tree (gitignored — multi-GB) ─────────────────────────────────────────
 DATA = HERE / "data"
@@ -81,9 +85,14 @@ CLASSIFIER_SETS = {
 # Project decision: balanced thresholds are authoritative. They were calibrated
 # on balanced pos/neg subsets, so they are not crushed by the 100k-image
 # negative base rate the way the naive full-split thresholds are.
-LVIS_BALANCED_THRESHOLDS = CALIB_ROOT / "data" / "calibration" / "balanced_thresholds.npy"
-LVIS_NAIVE_THRESHOLDS = CALIB_ROOT / "data" / "calibration" / "thresholds.npy"
-LVIS_TAG_ORDER = CALIB_ROOT / "data" / "text" / "tag_order.json"
+#
+# These read from the sibling project's committed results/ rather than its
+# gitignored data/, so a fresh clone can run this app without first reproducing
+# a multi-hour calibration.
+LVIS_RESULTS = CALIB_ROOT / "results"
+LVIS_BALANCED_THRESHOLDS = LVIS_RESULTS / "balanced_thresholds.npy"
+LVIS_NAIVE_THRESHOLDS = LVIS_RESULTS / "thresholds.npy"
+LVIS_TAG_ORDER = LVIS_RESULTS / "tag_order.json"
 
 # Mapping artifacts (LVIS 1203 -> RAM 4585)
 TAG_MAPPING_CSV = TEXT_DIR / "lvis_to_ram_mapping.csv"

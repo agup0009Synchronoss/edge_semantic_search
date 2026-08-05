@@ -55,25 +55,17 @@ import pathlib
 import numpy as np
 import gradio as gr
 
+import config
+
 HERE        = pathlib.Path(__file__).parent
 
-# Paths can be overridden with environment variables so the same code runs on
-# any machine without editing this file:
-#   export VG_RESIZED_DIR=/path/to/resized_224_x_224
-#   export VG_VIT_PKL=/path/to/vg_clip_embeddings.pkl
-#   export VG_TINY_PKL=/path/to/vg_tinyclip_embeddings.pkl
-RESIZED_DIR = pathlib.Path(os.environ.get(
-    "VG_RESIZED_DIR",
-    r"C:\Users\agup0009\code\edge_object_detection\data\visual_genome\resized_224_x_224"
-))
-VIT_PKL = pathlib.Path(os.environ.get(
-    "VG_VIT_PKL",
-    r"C:\Users\agup0009\code\edge_object_detection\data\visual_genome\vg_clip_embeddings.pkl"
-))
-TINY_PKL = pathlib.Path(os.environ.get(
-    "VG_TINY_PKL",
-    str(HERE / "vg_tinyclip_embeddings.pkl")
-))
+# Paths resolve through config.py so this app, the verification scripts and the
+# precompute job all agree on where the corpus lives. Override with
+# $VG_DATA_ROOT (all three at once) or the per-artifact $VG_RESIZED_DIR /
+# $VG_VIT_PKL / $VG_TINY_PKL.
+RESIZED_DIR = config.resized_dir()
+VIT_PKL     = config.vit_pkl()
+TINY_PKL    = config.TINY_PKL
 
 
 def _load_lane(pkl_path: pathlib.Path):

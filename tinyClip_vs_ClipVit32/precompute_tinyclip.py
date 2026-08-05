@@ -27,10 +27,10 @@ import argparse
 import numpy as np
 from PIL import Image
 
-RESIZED_DIR = pathlib.Path(
-    r"C:\Users\agup0009\code\edge_object_detection\data\visual_genome\resized_224_x_224"
-)
-OUT_PKL = pathlib.Path(__file__).parent / "vg_tinyclip_embeddings.pkl"
+import config
+
+RESIZED_DIR = config.resized_dir(required=False)
+OUT_PKL = config.TINY_PKL
 CHECKPOINT_EVERY = 5000
 
 # Per-process encoder (lazy global so each worker builds its own ORT sessions)

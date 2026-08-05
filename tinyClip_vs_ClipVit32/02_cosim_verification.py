@@ -70,12 +70,10 @@ import numpy as np
 from PIL import Image
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
-RESIZED_DIR = pathlib.Path(
-    r"C:\Users\agup0009\code\edge_object_detection\data\visual_genome\resized_224_x_224"
-)
-PKL_PATH = pathlib.Path(
-    r"C:\Users\agup0009\code\edge_object_detection\data\visual_genome\vg_clip_embeddings.pkl"
-)
+import config
+
+RESIZED_DIR = config.resized_dir()
+PKL_PATH = config.vit_pkl()
 
 N_SAMPLES       = 10
 COSIM_THRESHOLD = 0.98   # ≥ this is a PASS (plan specifies 1.00 ± 0.02)

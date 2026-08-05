@@ -6,9 +6,10 @@ pipeline. Everything downstream (00_..04_) imports from here so the pipeline has
 a single source of truth for paths, the Fbeta weighting, the cosine-threshold
 grid and the confidence buckets.
 
-Model reuse: we reuse the Android-exact encoders shipped with the Gradio app
-(tinyClip_vs_ClipVit32/tinyclip_encoder.py + assets/*.onnx). This module adds
-that folder to sys.path so `from tinyclip_encoder import TinyClipEncoder` works.
+Model reuse: we reuse the Android-exact encoders from research/common
+(tinyclip_encoder.py + assets/*.onnx — the same bytes the APK ships, held
+identical by ASSETS.sha256). This module puts that folder on sys.path so
+`from tinyclip_encoder import TinyClipEncoder` and `import templates` work.
 """
 
 from __future__ import annotations
@@ -21,12 +22,15 @@ import numpy as np
 # ── Repo layout ───────────────────────────────────────────────────────────────
 HERE = pathlib.Path(__file__).resolve().parent               # tinyClipCaliberation/
 REPO_ROOT = HERE.parent                                       # edge_semantic_search/
-ENCODER_DIR = REPO_ROOT / "tinyClip_vs_ClipVit32"            # reused encoder + assets
-ASSETS_DIR = ENCODER_DIR / "assets"                          # *.onnx encoders
+COMMON_DIR = REPO_ROOT / "research" / "common"                # shared encoder + templates
 
-# Make the reused encoder importable: `from tinyclip_encoder import TinyClipEncoder`
-if str(ENCODER_DIR) not in sys.path:
-    sys.path.insert(0, str(ENCODER_DIR))
+# Make the shared modules importable before anything else needs them.
+if str(COMMON_DIR) not in sys.path:
+    sys.path.insert(0, str(COMMON_DIR))
+
+import paths  # noqa: E402  (needs COMMON_DIR on sys.path first)
+
+ASSETS_DIR = paths.ASSETS_DIR                                 # *.onnx encoders
 
 # ── Data tree (all gitignored — multi-GB) ─────────────────────────────────────
 DATA = HERE / "data"

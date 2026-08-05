@@ -1,0 +1,28 @@
+# Normalize line endings so a Windows checkout and a Linux CI agree.
+# Without this, every commit from this repo emits "LF will be replaced by CRLF"
+# warnings and diffs can show whole files as changed.
+* text=auto eol=lf
+
+# Windows-only scripts must keep CRLF or PowerShell/cmd can misparse them.
+*.ps1   text eol=crlf
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+
+# Binary — never diff, never touch line endings.
+*.onnx  binary
+*.npy   binary
+*.npz   binary
+*.pkl   binary
+*.pth   binary
+*.jar   binary
+*.png   binary
+*.jpg   binary
+*.parquet binary
+
+# Large generated artifacts: mark so GitHub's language stats and diffs ignore
+# them. They are committed deliberately (see .gitignore header) but they are
+# data, not source.
+research/ram_comparison/assets/*.json      linguist-generated=true
+research/ram_comparison/assets/tag_chunks/*.json linguist-generated=true
+research/*/results/*                       linguist-generated=true
+ASSETS.sha256                              linguist-generated=true

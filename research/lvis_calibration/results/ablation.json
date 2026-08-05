@@ -1,0 +1,66 @@
+{
+  "fbeta": 0.816,
+  "n_images": 100169,
+  "variants": {
+    "prompts": {
+      "macro_fbeta": 0.0815,
+      "mean_precision": 0.0991,
+      "mean_recall": 0.3061,
+      "micro_fbeta": 0.1677,
+      "micro_threshold": 0.41,
+      "micro_precision": 0.2363,
+      "micro_recall": 0.1168,
+      "by_bucket_macro_fbeta": {
+        "high": 0.1552,
+        "medium": 0.057,
+        "weak": 0.0264
+      },
+      "n_calibrated": 1203
+    },
+    "descriptions": {
+      "macro_fbeta": 0.0893,
+      "mean_precision": 0.1068,
+      "mean_recall": 0.2905,
+      "micro_fbeta": 0.1493,
+      "micro_threshold": 0.4,
+      "micro_precision": 0.1668,
+      "micro_recall": 0.1289,
+      "by_bucket_macro_fbeta": {
+        "high": 0.1599,
+        "medium": 0.0641,
+        "weak": 0.0389
+      },
+      "n_calibrated": 1203
+    },
+    "questions": {
+      "macro_fbeta": 0.0835,
+      "mean_precision": 0.0962,
+      "mean_recall": 0.316,
+      "micro_fbeta": 0.1678,
+      "micro_threshold": 0.4,
+      "micro_precision": 0.1763,
+      "micro_recall": 0.1565,
+      "by_bucket_macro_fbeta": {
+        "high": 0.1598,
+        "medium": 0.0584,
+        "weak": 0.0261
+      },
+      "n_calibrated": 1203
+    },
+    "combined": {
+      "macro_fbeta": 0.0825,
+      "mean_precision": 0.0998,
+      "mean_recall": 0.3069,
+      "micro_fbeta": 0.1685,
+      "micro_threshold": 0.41,
+      "micro_precision": 0.2369,
+      "micro_recall": 0.1175,
+      "by_bucket_macro_fbeta": {
+        "high": 0.1562,
+        "medium": 0.058,
+        "weak": 0.0273
+      },
+      "n_calibrated": 1203
+    }
+  }
+}

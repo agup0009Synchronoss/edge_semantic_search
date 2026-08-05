@@ -1,0 +1,38 @@
+# Environment for the RAM++ vs TinyCLIP comparison app.
+#
+# This app is the only place in the repo where RAM++ (torch) and TinyCLIP
+# (onnxruntime) must run in ONE process, which forces a dedicated venv:
+# RAM's vendored BLIP-era ram/models/bert.py imports
+# `transformers.modeling_utils.apply_chunking_to_forward`, removed in
+# transformers 5.x. The sibling venv_clip has transformers 5.12.1 and cannot
+# be reused without breaking the existing research/vitb32_benchmark app.
+#
+# Install:  ./setup_venv.ps1
+
+# --- RAM++ (torch side) ---
+# CPU wheels; this machine has no CUDA. Install from the pytorch CPU index.
+torch==2.5.1
+torchvision==0.20.1
+# RAM pins timm==0.4.12, but that predates py3.11. 0.9.x still ships the
+# timm.models.layers shim that ram/models/swin_transformer.py imports.
+timm==0.9.16
+# Last 4.x line that still exposes transformers.file_utils and re-exports
+# apply_chunking_to_forward from modeling_utils.
+transformers==4.44.2
+pandas>=2.0
+fairscale==0.4.13
+# RAM's Swin position-bias interpolation calls scipy.interpolate.interp2d,
+# which was REMOVED in SciPy 1.14. Must stay below that.
+scipy==1.13.1
+
+# --- TinyCLIP (onnxruntime side), matching research/vitb32_benchmark ---
+onnxruntime==1.27.0
+onnxruntime_extensions==0.15.0
+
+# --- shared ---
+# gradio 5.x, NOT 6.x: gradio 6 requires huggingface-hub>=1.2 while
+# transformers 4.44 requires <1.0 — the two cannot be installed together.
+gradio>=5,<6
+numpy>=1.26,<3
+pillow>=11
+tqdm>=4.66

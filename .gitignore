@@ -1,28 +1,58 @@
-# ===== Gradle build outputs & caches =====
+# =============================================================================
+# Single source of truth for what this repo does NOT track.
+#
+# Most patterns are deliberately unanchored so they keep working regardless of
+# where a workstream lives in the tree.
+#
+# What IS tracked, despite being large, and why:
+#   app/src/main/assets/*.onnx        the encoders the APK ships (~50 MB)
+#   research/common/assets/*.onnx     the same encoders for the Python side
+#   research/*/results/*              small calibration/benchmark outputs (~1 MB)
+#   research/ram_comparison/assets/   LLM-generated descriptions; not regenerable
+# See ASSETS.sha256 and docs/reproducibility.md.
+# =============================================================================
+
+# ── Android / Gradle / JVM ───────────────────────────────────────────────────
 .gradle/
 build/
 *.iml
-
-# ===== Android SDK / local config (machine-specific, never commit) =====
-local.properties
-
-# ===== IDE files =====
-.idea/
 *.iws
 *.ipr
-
-# ===== Kotlin / JVM caches =====
 .kotlin/
+# machine-specific Android SDK paths — never commit
+local.properties
 
-# ===== AI assistant settings =====
+# ── IDE / tooling ────────────────────────────────────────────────────────────
+.idea/
 .claude/
 
-# ===== ML model assets =====
-# All model assets are committed (text ~15 MB, vision ~33 MB, tokenizer ~1.3 MB)
-# They are checked in so the app builds and runs without running export_split.py
-
-# ===== Python tooling outputs & caches =====
-tools/out/
-tools/__pycache__/
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
 *.pyc
 *.pyo
+venv_*/
+.venv/
+
+# ── Internal / proprietary ───────────────────────────────────────────────────
+# Verizon production tag frequencies + internal S3/Spark pipeline code.
+# Kept on disk for reference; must never reach this remote.
+# See research/ram_comparison/README.md for what it was used for.
+mldev_asset/
+
+# ── Generated data trees (multi-GB, all regenerable by the 00_* scripts) ─────
+# LVIS annotations (~1 GB), COCO train2017 images, img_matrix.npy (205 MB),
+# RAM++ checkpoint (~3 GB), text classifier .npy/.jsonl (15-40 MB).
+data/
+
+# ── Vendored upstream source (git clone, fetched by 00_download_ram.py) ──────
+vendor/
+
+# ── Model / embedding blobs produced locally ─────────────────────────────────
+*.pkl
+_build_cache/
+hf_cache/
+
+# ── Runtime caches & logs ────────────────────────────────────────────────────
+.gradio/
+*.log
+tools/out/

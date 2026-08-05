@@ -36,7 +36,7 @@ margin-ranked top hits were `file`, `masher`, `oar`, `pegleg`, `sawbuck`, and th
 A dedicated `venv_ramclip` is required, not a convenience. RAM's vendored
 BLIP-era `ram/models/bert.py` imports `transformers.modeling_utils.apply_chunking_to_forward`,
 which was removed in transformers 5.x — the sibling `venv_clip` runs 5.12.1 and
-cannot be reused without breaking the existing `tinyClip_vs_ClipVit32` app.
+cannot be reused without breaking the existing `research/vitb32_benchmark` app.
 
 Two further pins are load-bearing and were found the hard way:
 - **gradio 5.x, not 6.x** — gradio 6 requires `huggingface-hub>=1.2`, transformers 4.44 requires `<1.0`. Unresolvable together.
@@ -108,7 +108,7 @@ The practical difference shows up in the app: on the same image at the same knob
 description embeddings are meaningfully more discriminative.
 
 Sanity check: the templates balanced number (0.7955) reproduces the original LVIS
-balanced calibration (0.800 in `tinyClipCaliberation/README.md`), which is
+balanced calibration (0.800 in `research/lvis_calibration/README.md`), which is
 independent evidence the benchmark harness is wired correctly.
 
 ```bash
@@ -136,13 +136,13 @@ independent evidence the benchmark harness is wired correctly.
 
 Nothing about the encoder or the prompt templates is reimplemented here:
 
-- `tinyClip_vs_ClipVit32/tinyclip_encoder.py` — Android-exact TinyCLIP. Its
+- `research/common/tinyclip_encoder.py` — Android-exact TinyCLIP. Its
   deliberate double BOS/EOT tokenizer quirk must be preserved, otherwise
   embeddings stop matching the LVIS calibration that produced the thresholds.
-- `tinyClipCaliberation/templates.py` — the 85 prompt + 3 question templates.
+- `research/common/templates.py` — the 85 prompt + 3 question templates.
   RAM tags are bare strings with no synonyms and no gloss, so each yields
   exactly 88 strings (verified across all 4585).
-- `tinyClipCaliberation/data/calibration/balanced_thresholds.npy` — the
+- `research/lvis_calibration/results/balanced_thresholds.npy` — the
   authoritative per-tag cutoffs, chosen over the naive full-split thresholds
   because the latter are crushed by the 100k-image negative base rate.
 

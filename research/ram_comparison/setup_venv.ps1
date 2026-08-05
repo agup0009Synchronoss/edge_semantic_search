@@ -1,6 +1,6 @@
 # setup_venv.ps1 — create venv_ramclip for the RAM++ vs TinyCLIP app.
 #
-# Separate from tinyClip_vs_ClipVit32/venv_clip on purpose: RAM's vendored
+# Separate from research/vitb32_benchmark/venv_clip on purpose: RAM's vendored
 # BLIP-era BERT needs transformers 4.x, while venv_clip runs 5.12.1 for
 # sentence-transformers. See requirements.txt for the details.
 #

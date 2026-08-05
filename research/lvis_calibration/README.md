@@ -9,7 +9,7 @@ threshold on TinyCLIP image embeddings that maximizes a **precision-leaning
 Fbeta** (`beta = 0.816`, ~60% precision / 40% recall).
 
 Encoders are reused verbatim from the sibling Gradio app
-(`../tinyClip_vs_ClipVit32/tinyclip_encoder.py` + `assets/*.onnx`) so results are
+(`../common/tinyclip_encoder.py` + `assets/*.onnx`) so results are
 Android-exact: **int8** text encoder, **fp32** vision encoder, CLIP BPE tokenizer.
 
 ## Environment
@@ -17,7 +17,7 @@ Android-exact: **int8** text encoder, **fp32** vision encoder, CLIP BPE tokenize
 Reuse the existing venv (Python 3.11):
 
 ```powershell
-..\tinyClip_vs_ClipVit32\venv_clip\Scripts\Activate.ps1
+..\vitb32_benchmark\venv_clip\Scripts\Activate.ps1
 pip install -r requirements.txt      # most deps already present in venv_clip
 ```
 

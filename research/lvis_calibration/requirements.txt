@@ -1,4 +1,4 @@
-# Superset of tinyClip_vs_ClipVit32/requirements.txt needed for calibration.
+# Superset of research/vitb32_benchmark/requirements.txt needed for calibration.
 # Reuse the existing venv_clip (Python 3.11) — these are already present there
 # except where noted. Pins match the Gradio app to keep the ONNX encoders
 # byte-identical.

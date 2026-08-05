@@ -22,9 +22,10 @@ import pathlib
 import sys
 
 # ── Repo layout ───────────────────────────────────────────────────────────────
-HERE = pathlib.Path(__file__).resolve().parent           # tinyClip_vs_ClipVit32/
-REPO_ROOT = HERE.parent                                   # edge_semantic_search/
-COMMON_DIR = REPO_ROOT / "research" / "common"            # shared encoder + ssl_bypass
+HERE = pathlib.Path(__file__).resolve().parent           # research/vitb32_benchmark/
+RESEARCH_DIR = HERE.parent                                # research/
+REPO_ROOT = RESEARCH_DIR.parent                           # edge_semantic_search/
+COMMON_DIR = RESEARCH_DIR / "common"                      # shared encoder + ssl_bypass
 
 # Make the shared modules importable:
 #   from tinyclip_encoder import TinyClipEncoder

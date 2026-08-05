@@ -7,13 +7,13 @@ Two independent classifier sets are produced from disjoint text sources so they
 can be A/B'd in the UI:
 
     --source templates   88 strings/tag  (80 OpenAI + 5 LVIS + 3 question
-                                          templates, from tinyClipCaliberation/
+                                          templates, from research/lvis_calibration/
                                           templates.py) -> classifiers_templates.npy
     --source llm         10 strings/tag  (ChatGPT visual descriptions dropped
                                           into data/llm_desc/) -> classifiers_llm.npy
 
 Aggregation is the canonical OpenAI zero-shot recipe, identical to
-tinyClipCaliberation/01_build_text_classifiers.py: every string is encoded and
+research/lvis_calibration/01_build_text_classifiers.py: every string is encoded and
 L2-normalized by encode_text(), summed per tag in float64, then re-normalized.
 normalize(mean) == normalize(sum), so the mean is never formed explicitly.
 
@@ -34,7 +34,7 @@ import numpy as np
 from tqdm import tqdm
 
 import config
-import templates as tpl  # from tinyClipCaliberation/, via config's sys.path wiring
+import templates as tpl  # from research/lvis_calibration/, via config's sys.path wiring
 
 
 # ── Per-worker encoder (each worker builds its own ORT sessions) ──────────────

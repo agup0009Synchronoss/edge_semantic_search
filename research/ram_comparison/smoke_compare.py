@@ -20,11 +20,10 @@ try:
 except (AttributeError, OSError):  # pragma: no cover
     pass
 
+import config      # noqa: F401  (puts research/common on sys.path)
 import ssl_bypass  # noqa: F401  (must precede transformers import)
 
 from PIL import Image
-
-import config
 
 
 def main() -> None:

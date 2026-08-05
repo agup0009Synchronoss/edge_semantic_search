@@ -11,7 +11,7 @@ the network — so a warm cache is NOT enough, and RAM++ load fails at runtime
 with an SSLError that surfaces as an opaque Gradio "upstream app raised an
 exception".
 
-Same approach already used by tinyClip_vs_ClipVit32/app.py and
+Same approach already used by research/vitb32_benchmark/app.py and
 build_tinyclip_assets.py. Import this BEFORE torch/transformers/gradio:
 
     import ssl_bypass  # noqa: F401  (must precede transformers import)

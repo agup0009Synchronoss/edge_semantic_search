@@ -9,7 +9,7 @@ Threshold policy (project decision):
   - every other tag uses one global knob supplied by the UI
 
 The image encoder is the Android-exact TinyClipEncoder from
-tinyClip_vs_ClipVit32 — reused, not reimplemented, so scores stay comparable
+research/vitb32_benchmark — reused, not reimplemented, so scores stay comparable
 with the LVIS calibration that produced the thresholds.
 """
 

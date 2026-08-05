@@ -9,7 +9,7 @@ Fetch the RAM++ artifacts we do not vendor:
 
 Corporate TLS interception means the default certificate chain fails, so this
 mirrors the SSL-bypass approach used elsewhere in the repo
-(tinyClip_vs_ClipVit32/app.py, build_tinyclip_assets.py).
+(research/vitb32_benchmark/app.py, build_tinyclip_assets.py).
 
 Downloads are resumable: an interrupted transfer restarts from the byte offset
 already on disk via an HTTP Range header, so a dropped 3 GB download does not

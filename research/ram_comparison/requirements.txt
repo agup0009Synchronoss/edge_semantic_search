@@ -5,7 +5,7 @@
 # RAM's vendored BLIP-era ram/models/bert.py imports
 # `transformers.modeling_utils.apply_chunking_to_forward`, removed in
 # transformers 5.x. The sibling venv_clip has transformers 5.12.1 and cannot
-# be reused without breaking the existing tinyClip_vs_ClipVit32 app.
+# be reused without breaking the existing research/vitb32_benchmark app.
 #
 # Install:  ./setup_venv.ps1
 
@@ -25,7 +25,7 @@ fairscale==0.4.13
 # which was REMOVED in SciPy 1.14. Must stay below that.
 scipy==1.13.1
 
-# --- TinyCLIP (onnxruntime side), matching tinyClip_vs_ClipVit32 ---
+# --- TinyCLIP (onnxruntime side), matching research/vitb32_benchmark ---
 onnxruntime==1.27.0
 onnxruntime_extensions==0.15.0
 

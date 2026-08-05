@@ -5,7 +5,7 @@ Run the Android-exact TinyCLIP *fp32 vision* encoder over every LVIS-train image
 and store the embeddings as a matrix (not a dict) so calibration can do one big
 matmul.
 
-Mirrors tinyClip_vs_ClipVit32/precompute_tinyclip.py: multiprocessing pool with
+Mirrors research/vitb32_benchmark/precompute_tinyclip.py: multiprocessing pool with
 one ORT session per worker (1 intra-op thread), resumable, periodic checkpoint.
 
 Outputs (see config.py):

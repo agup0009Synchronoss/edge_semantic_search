@@ -8,10 +8,10 @@ can only package assets from `app/src/main/assets/` while the Python research
 code needs them importable from `research/common/assets/`. Duplication is the
 price; undetected divergence is not.
 
-That divergence already happened once: `app/src/main/assets/` and
-`tinyClip_vs_ClipVit32/assets/` drifted to different bytes and nobody noticed,
-which quietly put the "Android-exact encoder" claim behind every calibrated
-threshold in doubt. A parity check showed the two were numerically equivalent
+That divergence already happened once: `app/src/main/assets/` and the Python
+copy (then at `tinyClip_vs_ClipVit32/assets/`, before the research/ reorg)
+drifted to different bytes and nobody noticed, which quietly put the
+"Android-exact encoder" claim behind every calibrated threshold in doubt. A parity check showed the two were numerically equivalent
 (text bit-identical, vision within 4.2e-07 — float32 rounding), so nothing was
 actually wrong, but it took a 100k-image investigation to establish that.
 This script exists so the next drift is caught in one second instead.

@@ -9,7 +9,7 @@ Reuse map (nothing here is re-implemented):
   - research/common/tinyclip_encoder.py    -> TinyClipEncoder (Android-exact)
   - research/common/templates.py           -> the 88 template strings
   - research/common/ssl_bypass.py          -> corporate-TLS workaround
-  - tinyClipCaliberation/results/          -> balanced per-tag thresholds
+  - research/lvis_calibration/results/          -> balanced per-tag thresholds
 """
 
 from __future__ import annotations
@@ -18,10 +18,11 @@ import pathlib
 import sys
 
 # ── Repo layout ───────────────────────────────────────────────────────────────
-HERE = pathlib.Path(__file__).resolve().parent          # gradio_tinyClip_vs_RAMProd/
-CALIB_ROOT = HERE.parent                                 # tinyClipCaliberation/
-REPO_ROOT = CALIB_ROOT.parent                            # edge_semantic_search/
-COMMON_DIR = REPO_ROOT / "research" / "common"           # shared encoder, templates, ssl_bypass
+HERE = pathlib.Path(__file__).resolve().parent          # research/ram_comparison/
+RESEARCH_DIR = HERE.parent                               # research/
+REPO_ROOT = RESEARCH_DIR.parent                          # edge_semantic_search/
+COMMON_DIR = RESEARCH_DIR / "common"                     # shared encoder, templates, ssl_bypass
+CALIB_ROOT = RESEARCH_DIR / "lvis_calibration"           # sibling project; source of the thresholds
 
 # Make the shared modules importable:
 #   from tinyclip_encoder import TinyClipEncoder   (encoder + ONNX assets)
@@ -126,7 +127,7 @@ UNCALIBRATED = float("nan")
 DEFAULT_UNCALIBRATED_THRESHOLD = 0.30
 UNCALIBRATED_THRESHOLD_RANGE = (0.10, 0.60)
 DEFAULT_TOP_K = 25          # matches prod RAM's max_tags
-GRADIO_PORT_DEFAULT = 7863  # 7862 is the existing tinyClip_vs_ClipVit32 app
+GRADIO_PORT_DEFAULT = 7863  # 7862 is the existing research/vitb32_benchmark app
 
 
 def ensure_dirs() -> None:

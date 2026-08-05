@@ -23,6 +23,7 @@ try:
 except (AttributeError, OSError):  # pragma: no cover - non-reconfigurable stream
     pass
 
+import config      # noqa: F401  (puts research/common on sys.path)
 import ssl_bypass  # noqa: F401  (must precede transformers import)
 
 OK, BAD = "  PASS", "  FAIL"

@@ -20,9 +20,10 @@ import pathlib
 import numpy as np
 
 # ── Repo layout ───────────────────────────────────────────────────────────────
-HERE = pathlib.Path(__file__).resolve().parent               # tinyClipCaliberation/
-REPO_ROOT = HERE.parent                                       # edge_semantic_search/
-COMMON_DIR = REPO_ROOT / "research" / "common"                # shared encoder + templates
+HERE = pathlib.Path(__file__).resolve().parent               # research/lvis_calibration/
+RESEARCH_DIR = HERE.parent                                    # research/
+REPO_ROOT = RESEARCH_DIR.parent                               # edge_semantic_search/
+COMMON_DIR = RESEARCH_DIR / "common"                          # shared encoder + templates
 
 # Make the shared modules importable before anything else needs them.
 if str(COMMON_DIR) not in sys.path:

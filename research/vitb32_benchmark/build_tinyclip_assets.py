@@ -11,7 +11,7 @@ Produces:
 
 This mirrors:
   - tools/export_split.py            (text extraction + HF source repo)
-  - CONFLUENCE_POC.md lines 150-159  (vision fp32 PyTorch export)
+  - docs/android_poc.md lines 150-159  (vision fp32 PyTorch export)
 
 VERIFY gate at the end:
   - tokenizer "a photo of a cat" -> [49406, 320, 1125, 539, 320, 2368, 49407]

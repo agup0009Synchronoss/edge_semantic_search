@@ -9,8 +9,9 @@ metadata, node ordering, and initializer layout while computing exactly the
 same function. This script answers the question that actually matters: do the
 two sets produce the same embeddings?
 
-It exists because `app/src/main/assets/` and `tinyClip_vs_ClipVit32/assets/`
-were found to have different hashes for the text and vision models. Since every
+It exists because `app/src/main/assets/` and the Python copy (then at
+`tinyClip_vs_ClipVit32/assets/`, before the research/ reorg) were found to have
+different hashes for the text and vision models. Since every
 calibrated threshold in this repo was produced with one of those sets and the
 APK ships the other, "the difference is probably harmless" was not good enough:
 if they were genuinely different models, every committed threshold would be

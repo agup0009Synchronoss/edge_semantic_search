@@ -40,7 +40,7 @@ from collections import defaultdict
 import numpy as np
 
 import config
-import templates as tpl  # normalize_label() from tinyClipCaliberation/
+import templates as tpl  # normalize_label() from research/lvis_calibration/
 
 
 # ── Normalization ─────────────────────────────────────────────────────────────

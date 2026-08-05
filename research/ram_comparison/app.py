@@ -24,12 +24,13 @@ os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")
 
 # Must precede any transformers/huggingface_hub import: RAM's init_tokenizer()
 # fetches bert-base-uncased from the Hub on every model construction.
+# config comes first because it is what puts research/common on sys.path.
+import config      # noqa: F401,E402
 import ssl_bypass  # noqa: F401,E402
 
 import gradio as gr
 from PIL import Image
 
-import config
 from ram_tagger import RamTagger
 from tinyclip_tagger import TinyClipTagger
 

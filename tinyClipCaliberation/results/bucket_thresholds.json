@@ -1,0 +1,33 @@
+{
+  "fbeta": 0.5,
+  "buckets": {
+    "weak": {
+      "threshold": 0.45,
+      "micro_fbeta": 0.0178,
+      "micro_precision": 0.0304,
+      "micro_recall": 0.0067,
+      "n_tags": 337
+    },
+    "medium": {
+      "threshold": 0.43,
+      "micro_fbeta": 0.0684,
+      "micro_precision": 0.091,
+      "micro_recall": 0.0343,
+      "n_tags": 461
+    },
+    "high": {
+      "threshold": 0.41,
+      "micro_fbeta": 0.2697,
+      "micro_precision": 0.3933,
+      "micro_recall": 0.1196,
+      "n_tags": 405
+    }
+  },
+  "global": {
+    "threshold": 0.42,
+    "micro_fbeta": 0.1976,
+    "micro_precision": 0.3213,
+    "micro_recall": 0.0778,
+    "n_tags": 1203
+  }
+}

@@ -11,38 +11,12 @@ Checks:
   3. Sanity cross-modal: matching caption scores higher than a non-matching one.
 """
 
-# ── SSL bypass (for PyTorch reference weight download) ────────────────────────
-import os, ssl, urllib3, warnings
-os.environ['PYTHONHTTPSVERIFY']               = '0'
-os.environ['REQUESTS_CA_BUNDLE']              = ''
-os.environ['CURL_CA_BUNDLE']                  = ''
-os.environ['SSL_CERT_FILE']                   = ''
-os.environ['HF_HUB_DISABLE_SSL_VERIFICATION'] = '1'
-os.environ['HF_HOME']                         = './hf_cache'
-os.environ['HF_HUB_DISABLE_SYMLINKS_WARNING'] = '1'
-os.environ['TRANSFORMERS_VERIFY_SSL']         = '0'
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-warnings.filterwarnings('ignore')
-ssl._create_default_https_context = ssl._create_unverified_context
-import requests as _rq
-_OrigSession = _rq.Session
-class _NoSSLSession(_OrigSession):
-    def __init__(self):
-        super().__init__(); self.verify = False
-_rq.Session = _NoSSLSession
-try:
-    import httpx as _httpx
-    _OC = _httpx.Client
-    class _NC(_OC):
-        def __init__(self, *a, **k): k['verify']=False; super().__init__(*a, **k)
-    _httpx.Client = _NC
-    _OA = _httpx.AsyncClient
-    class _NA(_OA):
-        def __init__(self, *a, **k): k['verify']=False; super().__init__(*a, **k)
-    _httpx.AsyncClient = _NA
-except ImportError:
-    pass
-# ─────────────────────────────────────────────────────────────────────────────
+# ── SSL bypass — ORDER IS LOAD-BEARING ────────────────────────────────────────
+# config puts research/common on sys.path and pins HF_HOME; ssl_bypass applies
+# the corporate-TLS workaround. Both must land before transformers, which this
+# script uses to download the PyTorch reference weights.
+import config       # noqa: F401  (sys.path wiring + HF_HOME)
+import ssl_bypass   # noqa: F401  (MUST precede transformers)
 
 import sys
 import pathlib
@@ -50,7 +24,6 @@ import random
 import numpy as np
 from PIL import Image
 
-import config
 from tinyclip_encoder import TinyClipEncoder, _BOS, _EOT
 
 RESIZED_DIR = config.resized_dir()

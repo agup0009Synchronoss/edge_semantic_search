@@ -19,52 +19,17 @@ VERIFY gate at the end:
   - text embedding dim 512
 """
 
-# ── SSL bypass (corporate env) — before any network import ────────────────────
-import os, ssl, urllib3, warnings
-os.environ['PYTHONHTTPSVERIFY']               = '0'
-os.environ['REQUESTS_CA_BUNDLE']              = ''
-os.environ['CURL_CA_BUNDLE']                  = ''
-os.environ['SSL_CERT_FILE']                   = ''
-os.environ['HF_HUB_DISABLE_SSL_VERIFICATION'] = '1'
-os.environ['HF_HOME']                         = './hf_cache'
-os.environ['HF_HUB_DISABLE_SYMLINKS_WARNING'] = '1'
-os.environ['TRANSFORMERS_VERIFY_SSL']         = '0'
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-warnings.filterwarnings('ignore')
-ssl._create_default_https_context = ssl._create_unverified_context
-
-import requests as _rq
-_OrigSession = _rq.Session
-class _NoSSLSession(_OrigSession):
-    def __init__(self):
-        super().__init__()
-        self.verify = False
-_rq.Session = _NoSSLSession
-
-try:
-    import httpx as _httpx
-    _OrigClient = _httpx.Client
-    class _NoSSLClient(_OrigClient):
-        def __init__(self, *a, **k):
-            k['verify'] = False
-            super().__init__(*a, **k)
-    _httpx.Client = _NoSSLClient
-    _OrigAsync = _httpx.AsyncClient
-    class _NoSSLAsync(_OrigAsync):
-        def __init__(self, *a, **k):
-            k['verify'] = False
-            super().__init__(*a, **k)
-    _httpx.AsyncClient = _NoSSLAsync
-except ImportError:
-    pass
-# ─────────────────────────────────────────────────────────────────────────────
+# ── SSL bypass — ORDER IS LOAD-BEARING ────────────────────────────────────────
+# config puts research/common on sys.path and pins HF_HOME; ssl_bypass applies
+# the corporate-TLS workaround. Both must land before huggingface_hub or
+# transformers, which this script uses to fetch the upstream models.
+import config       # noqa: F401  (sys.path wiring + HF_HOME)
+import ssl_bypass   # noqa: F401  (MUST precede huggingface_hub / transformers)
 
 import sys
 import shutil
 import pathlib
 import numpy as np
-
-import config
 
 HERE          = pathlib.Path(__file__).parent
 

@@ -36,6 +36,14 @@ import paths  # noqa: E402  (needs COMMON_DIR on sys.path first)
 
 ASSETS_DIR = paths.ASSETS_DIR                             # the canonical *.onnx encoders
 
+# ── HuggingFace cache ─────────────────────────────────────────────────────────
+# Pinned here rather than in each script. The scripts previously set
+# HF_HOME='./hf_cache' — a RELATIVE path, so the cache landed somewhere
+# different depending on the caller's working directory and models got
+# re-downloaded. Anchored to this folder instead. setdefault, so an explicitly
+# exported HF_HOME still wins.
+os.environ.setdefault("HF_HOME", str(HERE / "hf_cache"))
+
 # ── Local artifacts ───────────────────────────────────────────────────────────
 # 226 MB, gitignored; produced by precompute_tinyclip.py.
 TINY_PKL = pathlib.Path(os.environ.get("VG_TINY_PKL", HERE / "vg_tinyclip_embeddings.pkl"))

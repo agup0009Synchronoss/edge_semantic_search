@@ -11,56 +11,12 @@ that the pkl was produced by the same CLIP ViT-B/32 model.
 Requires venv_clip (run setup_venv.ps1 first).
 """
 
-# ── SSL bypass — must come before any network-touching import ─────────────────
-import os
-import ssl
-import urllib3
-import warnings
-
-os.environ['PYTHONHTTPSVERIFY']               = '0'
-os.environ['REQUESTS_CA_BUNDLE']              = ''
-os.environ['CURL_CA_BUNDLE']                  = ''
-os.environ['SSL_CERT_FILE']                   = ''
-os.environ['HF_HUB_DISABLE_SSL_VERIFICATION'] = '1'
-os.environ['HF_HOME']                         = './hf_cache'
-os.environ['HF_HUB_DISABLE_SYMLINKS_WARNING'] = '1'
-os.environ['TRANSFORMERS_VERIFY_SSL']         = '0'
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-warnings.filterwarnings('ignore', message='Unverified HTTPS request')
-warnings.filterwarnings('ignore', category=DeprecationWarning)
-ssl._create_default_https_context = ssl._create_unverified_context
-
-# Patch requests.Session to disable SSL verification
-import requests as _requests_module
-_OrigRequestsSession = _requests_module.Session
-class _NoSSLRequestsSession(_OrigRequestsSession):
-    def __init__(self):
-        super().__init__()
-        self.verify = False
-_requests_module.Session = _NoSSLRequestsSession
-
-# Patch httpx (huggingface_hub >= 0.24 uses httpx, not requests)
-# The 'client has been closed' error happens when httpx closes the client after
-# an SSL failure; forcing verify=False prevents the failure entirely.
-try:
-    import httpx as _httpx_module
-    _OrigHttpxClient = _httpx_module.Client
-    class _NoSSLHttpxClient(_OrigHttpxClient):
-        def __init__(self, *args, **kwargs):
-            kwargs['verify'] = False
-            super().__init__(*args, **kwargs)
-    _httpx_module.Client = _NoSSLHttpxClient
-
-    _OrigHttpxAsyncClient = _httpx_module.AsyncClient
-    class _NoSSLHttpxAsyncClient(_OrigHttpxAsyncClient):
-        def __init__(self, *args, **kwargs):
-            kwargs['verify'] = False
-            super().__init__(*args, **kwargs)
-    _httpx_module.AsyncClient = _NoSSLHttpxAsyncClient
-except ImportError:
-    pass
-# ─────────────────────────────────────────────────────────────────────────────
+# ── SSL bypass — ORDER IS LOAD-BEARING ────────────────────────────────────────
+# config puts research/common on sys.path and pins HF_HOME; ssl_bypass applies
+# the corporate-TLS workaround. Both must land before sentence-transformers,
+# which reaches the Hub at import time.
+import config       # noqa: F401  (sys.path wiring + HF_HOME)
+import ssl_bypass   # noqa: F401  (MUST precede sentence-transformers)
 
 import pickle
 import pathlib
@@ -70,7 +26,6 @@ import numpy as np
 from PIL import Image
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
-import config
 
 RESIZED_DIR = config.resized_dir()
 PKL_PATH = config.vit_pkl()

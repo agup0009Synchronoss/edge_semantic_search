@@ -16,46 +16,19 @@ spaces - never cross-compare). Top-N results are shown side by side with
 cosine scores.
 """
 
-# ── SSL bypass (sentence-transformers / HF model load) ────────────────────────
-import os, ssl, urllib3, warnings
-os.environ['PYTHONHTTPSVERIFY']               = '0'
-os.environ['REQUESTS_CA_BUNDLE']              = ''
-os.environ['CURL_CA_BUNDLE']                  = ''
-os.environ['SSL_CERT_FILE']                   = ''
-os.environ['HF_HUB_DISABLE_SSL_VERIFICATION'] = '1'
-os.environ['HF_HOME']                         = './hf_cache'
-os.environ['HF_HUB_DISABLE_SYMLINKS_WARNING'] = '1'
-os.environ['TRANSFORMERS_VERIFY_SSL']         = '0'
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-warnings.filterwarnings('ignore')
-ssl._create_default_https_context = ssl._create_unverified_context
-import requests as _rq
-_OrigSession = _rq.Session
-class _NoSSLSession(_OrigSession):
-    def __init__(self):
-        super().__init__(); self.verify = False
-_rq.Session = _NoSSLSession
-try:
-    import httpx as _httpx
-    _OC = _httpx.Client
-    class _NC(_OC):
-        def __init__(self, *a, **k): k['verify']=False; super().__init__(*a, **k)
-    _httpx.Client = _NC
-    _OA = _httpx.AsyncClient
-    class _NA(_OA):
-        def __init__(self, *a, **k): k['verify']=False; super().__init__(*a, **k)
-    _httpx.AsyncClient = _NA
-except ImportError:
-    pass
-# ─────────────────────────────────────────────────────────────────────────────
+# ── SSL bypass — ORDER IS LOAD-BEARING ────────────────────────────────────────
+# config puts research/common on sys.path and pins HF_HOME; ssl_bypass applies
+# the corporate-TLS workaround. Both must land before gradio or
+# sentence-transformers, which open connections at import time.
+import os
+import config          # noqa: F401  (sys.path wiring + HF_HOME)
+import ssl_bypass      # noqa: F401  (MUST precede gradio / sentence-transformers)
 
 import time
 import pickle
 import pathlib
 import numpy as np
 import gradio as gr
-
-import config
 
 HERE        = pathlib.Path(__file__).parent
 

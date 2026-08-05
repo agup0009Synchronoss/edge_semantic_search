@@ -1,38 +1,62 @@
 # Environment for the RAM++ vs TinyCLIP comparison app.
 #
 # This app is the only place in the repo where RAM++ (torch) and TinyCLIP
-# (onnxruntime) must run in ONE process, which forces a dedicated venv:
-# RAM's vendored BLIP-era ram/models/bert.py imports
-# `transformers.modeling_utils.apply_chunking_to_forward`, removed in
-# transformers 5.x. The sibling venv_clip has transformers 5.12.1 and cannot
-# be reused without breaking the existing research/vitb32_benchmark app.
+# (onnxruntime) must run in ONE process, which forces a dedicated venv.
 #
-# Install:  ./setup_venv.ps1
+# Install:  ./setup_venv.sh        (Linux / jovyan)
+#           ./setup_venv.ps1       (Windows)
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# BOUNDS POLICY
+#
+# Versions are left open so wheels resolve against whatever Python the host
+# image ships. The FOUR upper bounds below are NOT stylistic — each marks a
+# real, reproduced incompatibility that breaks the app at import or at model
+# load. Do not relax them without re-running verify_env.py --full.
+# ─────────────────────────────────────────────────────────────────────────────
 
 # --- RAM++ (torch side) ---
-# CPU wheels; this machine has no CUDA. Install from the pytorch CPU index.
-torch==2.5.1
-torchvision==0.20.1
-# RAM pins timm==0.4.12, but that predates py3.11. 0.9.x still ships the
-# timm.models.layers shim that ram/models/swin_transformer.py imports.
-timm==0.9.16
-# Last 4.x line that still exposes transformers.file_utils and re-exports
-# apply_chunking_to_forward from modeling_utils.
-transformers==4.44.2
-pandas>=2.0
-fairscale==0.4.13
-# RAM's Swin position-bias interpolation calls scipy.interpolate.interp2d,
-# which was REMOVED in SciPy 1.14. Must stay below that.
-scipy==1.13.1
+# CPU wheels are fine; setup_venv.sh installs these from the pytorch CPU index
+# unless you pass --gpu.
+torch>=2.0
+torchvision>=0.15
 
-# --- TinyCLIP (onnxruntime side), matching research/vitb32_benchmark ---
-onnxruntime==1.27.0
-onnxruntime_extensions==0.15.0
+# HARD UPPER BOUND. RAM's vendored BLIP-era ram/models/bert.py imports
+# transformers.modeling_utils.apply_chunking_to_forward, which was REMOVED in
+# transformers 5.x. Symptom: ImportError at RAM model construction.
+transformers>=4.40,<5
+
+# transformers <5 caps huggingface-hub at <1.0. Stated explicitly so pip
+# resolves in one pass instead of backtracking through dozens of candidates.
+huggingface_hub<1.0
+
+# RAM upstream pins timm==0.4.12, which predates Python 3.11. 0.9+ still ships
+# the timm.models.layers shim that ram/models/swin_transformer.py imports.
+timm>=0.9,<2
+
+# HARD UPPER BOUND. RAM's Swin position-bias interpolation calls
+# scipy.interpolate.interp2d, REMOVED in SciPy 1.14.
+# Symptom: AttributeError while loading the checkpoint.
+scipy<1.14
+
+pandas>=2.0
+fairscale>=0.4.13
+
+# --- TinyCLIP (onnxruntime side) ---
+# onnxruntime-extensions supplies the CLIPTokenizer custom op. 0.12 is the
+# oldest release that builds the tokenizer graph this repo's asset was made
+# with; newer is fine.
+onnxruntime>=1.17
+onnxruntime-extensions>=0.12
 
 # --- shared ---
-# gradio 5.x, NOT 6.x: gradio 6 requires huggingface-hub>=1.2 while
-# transformers 4.44 requires <1.0 — the two cannot be installed together.
+# HARD UPPER BOUND. gradio 6 requires huggingface-hub>=1.2, while
+# transformers <5 requires <1.0. The two cannot coexist; pip will either
+# backtrack forever or silently break transformers.
 gradio>=5,<6
+
+# HARD UPPER BOUND. onnxruntime has no numpy 3.x wheels yet.
 numpy>=1.26,<3
-pillow>=11
-tqdm>=4.66
+
+pillow>=10
+tqdm>=4.60

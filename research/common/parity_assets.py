@@ -23,10 +23,17 @@ Result on the sets as of the repo-cleanup work:
 That is ~3 float32 ulp, i.e. inert. The two locations were then made
 byte-identical and are held that way by verify_assets.py.
 
+The same machinery answers a second question: does a GPU execution provider
+compute the same thing as the CPU one? An EP is a different kernel
+implementation, not just a different device, so this is not a given. Run
+`--check-providers` before trusting any artifact rebuilt with $ORT_PROVIDERS
+set — a divergence there would silently invalidate every committed threshold.
+
 Usage:
     python research/common/parity_assets.py                     # default A/B dirs
     python research/common/parity_assets.py --a DIR --b DIR
     python research/common/parity_assets.py --images DIR --limit 25
+    python research/common/parity_assets.py --check-providers   # CPU vs $ORT_PROVIDERS
 """
 
 from __future__ import annotations
@@ -83,19 +90,49 @@ def main() -> int:
         help="directory of .jpg to encode; falls back to seeded synthetic images",
     )
     ap.add_argument("--limit", type=int, default=12, help="how many images to compare")
+    ap.add_argument(
+        "--check-providers",
+        action="store_true",
+        help="compare CPU against $ORT_PROVIDERS on the SAME assets, instead of "
+             "comparing two asset directories",
+    )
     args = ap.parse_args()
 
     sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
     from tinyclip_encoder import TinyClipEncoder  # noqa: E402
+    import onnxruntime as ort  # noqa: E402
 
-    for d in (args.a, args.b):
-        if not d.is_dir():
-            print(f"ERROR: asset dir not found: {d}", file=sys.stderr)
+    if args.check_providers:
+        import os
+        wanted = os.environ.get("ORT_PROVIDERS", "").strip()
+        if not wanted:
+            print("ERROR: --check-providers needs $ORT_PROVIDERS set, e.g.\n"
+                  "  export ORT_PROVIDERS=CUDAExecutionProvider,CPUExecutionProvider",
+                  file=sys.stderr)
             return 1
+        gpu = [p.strip() for p in wanted.split(",") if p.strip()]
+        unavailable = [p for p in gpu if p not in set(ort.get_available_providers())]
+        if unavailable:
+            print(f"ERROR: provider(s) not available in this onnxruntime build: "
+                  f"{', '.join(unavailable)}\n"
+                  f"  available: {', '.join(ort.get_available_providers())}\n"
+                  f"  (install onnxruntime-gpu in place of onnxruntime)", file=sys.stderr)
+            return 1
+        assets = args.b if args.b.is_dir() else args.a
+        print(f"assets  = {assets}\nA = CPUExecutionProvider\nB = {', '.join(gpu)}\n"
+              "loading encoders...")
+        ea = TinyClipEncoder(assets_dir=assets, intra_op_threads=4,
+                             providers=["CPUExecutionProvider"])
+        eb = TinyClipEncoder(assets_dir=assets, intra_op_threads=4, providers=gpu)
+    else:
+        for d in (args.a, args.b):
+            if not d.is_dir():
+                print(f"ERROR: asset dir not found: {d}", file=sys.stderr)
+                return 1
 
-    print(f"A = {args.a}\nB = {args.b}\nloading encoders...")
-    ea = TinyClipEncoder(assets_dir=args.a, intra_op_threads=4)
-    eb = TinyClipEncoder(assets_dir=args.b, intra_op_threads=4)
+        print(f"A = {args.a}\nB = {args.b}\nloading encoders...")
+        ea = TinyClipEncoder(assets_dir=args.a, intra_op_threads=4)
+        eb = TinyClipEncoder(assets_dir=args.b, intra_op_threads=4)
 
     print(f"\n=== TEXT ({len(CAPTIONS)} captions) ===")
     tcos, tmax = [], 0.0
@@ -128,10 +165,19 @@ def main() -> int:
 
     print("\n=== VERDICT ===")
     if ok_text and ok_vision:
-        print("  EQUIVALENT — any byte difference is inert export metadata.")
+        if args.check_providers:
+            print("  EQUIVALENT — the GPU kernels agree with CPU on this model.")
+            print("  Artifacts rebuilt with $ORT_PROVIDERS set are safe to trust.")
+        else:
+            print("  EQUIVALENT — any byte difference is inert export metadata.")
         return 0
-    print("  *** NOT EQUIVALENT — these are different models. ***")
-    print("  Thresholds calibrated with one set are not valid for the other.")
+    if args.check_providers:
+        print("  *** NOT EQUIVALENT — the GPU kernels disagree with CPU. ***")
+        print("  Do NOT rebuild artifacts with this provider: the thresholds in")
+        print("  research/lvis_calibration/results/ were calibrated on CPU.")
+    else:
+        print("  *** NOT EQUIVALENT — these are different models. ***")
+        print("  Thresholds calibrated with one set are not valid for the other.")
     return 2
 
 

@@ -7,8 +7,13 @@ need downloads measured in gigabytes, and one needs a corpus this repo cannot
 distribute.
 
 **Conventions:** commands assume the repo root as the working directory.
-PowerShell is shown because the work was done on Windows; the bash equivalents
-differ only in path separators and venv activation.
+PowerShell is shown because the work was done on Windows; on Linux use
+`setup_venv.sh` instead of `setup_venv.ps1` and `venv_*/bin/python` instead of
+`venv_*/Scripts/python.exe`.
+
+**Just want the two Gradio apps running on a Linux or GPU box?**
+[`jovyan_deployment.md`](jovyan_deployment.md) is the short path — one bootstrap
+command, and it explains which workloads actually use a GPU.
 
 ---
 

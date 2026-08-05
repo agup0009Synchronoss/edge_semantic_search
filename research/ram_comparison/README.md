@@ -30,8 +30,15 @@ margin-ranked top hits were `file`, `masher`, `oar`, `pegleg`, `sawbuck`, and th
 ## Setup
 
 ```bash
-./setup_venv.ps1
+./setup_venv.sh          # Linux/macOS; auto-detects GPU
 ```
+
+```powershell
+./setup_venv.ps1         # Windows
+```
+
+Standing this up on a remote/GPU box? [`../../docs/jovyan_deployment.md`](../../docs/jovyan_deployment.md)
+does it in one command and needs nothing copied across.
 
 A dedicated `venv_ramclip` is required, not a convenience. RAM's vendored
 BLIP-era `ram/models/bert.py` imports `transformers.modeling_utils.apply_chunking_to_forward`,

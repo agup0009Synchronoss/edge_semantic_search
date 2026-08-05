@@ -22,13 +22,18 @@ spaces — cross-comparing them produces confident nonsense.
 
 ## Prerequisites
 
-This workstream needs a Visual Genome corpus that is **not** in this repo
-(~15 GB). Point `VG_DATA_ROOT` at a directory containing:
+This workstream needs a Visual Genome image corpus that is **not** in this repo.
+Point `VG_DATA_ROOT` at a directory containing:
 
 ```
-resized_224_x_224/      108,079 pre-resized .jpg
-vg_clip_embeddings.pkl  CLIP ViT-B/32 embeddings, keyed "<id>.jpg"
+resized_224_x_224/      108,079 pre-resized .jpg   <- the irreducible input
+vg_clip_embeddings.pkl  CLIP ViT-B/32 embeddings   <- or build it, see below
 ```
+
+Only the images are irreducible. Both `.pkl` files are computed *from* them:
+`build_vit_embeddings.py` produces the ViT-B/32 one and `precompute_tinyclip.py`
+the TinyCLIP one. Without the images there is nothing to compute and nothing to
+display.
 
 ```powershell
 $env:VG_DATA_ROOT = "D:\data\visual_genome"
@@ -40,14 +45,21 @@ Without it the scripts fail with setup instructions rather than a bare
 
 ## Setup
 
-```powershell
-./setup_venv.ps1
+```bash
+./setup_venv.sh          # Linux/macOS; auto-detects GPU
 ```
+
+```powershell
+./setup_venv.ps1         # Windows
+```
+
+Deploying to a remote box? See [`../../docs/jovyan_deployment.md`](../../docs/jovyan_deployment.md).
 
 ## Run order
 
 | Stage | Command | Produces / checks |
 |---|---|---|
+| 0 | `python build_vit_embeddings.py` | `vg_clip_embeddings.pkl` — the CLIP ViT-B/32 lane. GPU-accelerated, resumable. Skip if you already have the pkl. |
 | 0 | `python 01_verify_pkl_coverage.py` | every image has an embedding, and vice versa |
 | 0 | `python 02_cosim_verification.py` | re-embeds 10 random images and confirms cosine ≈ 1.00 against the stored pkl — proves it really came from CLIP ViT-B/32 |
 | 1 | `python build_tinyclip_assets.py` | regenerates the ONNX encoders into `research/common/assets/` |
@@ -89,6 +101,7 @@ and the RAM comparison, both of which were computed with it in place.
 | file | role |
 |---|---|
 | `config.py` | paths, `sys.path` wiring to `research/common`, `HF_HOME` |
+| `build_vit_embeddings.py` | builds `vg_clip_embeddings.pkl` (CLIP ViT-B/32 lane), GPU-accelerated |
 | `build_tinyclip_assets.py` | regenerates the three ONNX encoders |
 | `parity_check.py` | ONNX vs PyTorch reference + tokenizer gate |
 | `precompute_tinyclip.py` | embeds all 108K images, resumable |

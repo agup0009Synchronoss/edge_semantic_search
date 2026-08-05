@@ -18,6 +18,7 @@ Both embeddings are L2-normalized to match ClipEngine.l2normalize().
 This module is imported by parity_check.py, precompute_tinyclip.py and app.py.
 """
 
+import os
 import pathlib
 import numpy as np
 from PIL import Image
@@ -37,6 +38,44 @@ _EOT = 49407
 
 _ASSETS = pathlib.Path(__file__).parent / "assets"
 
+# ── Execution provider ────────────────────────────────────────────────────────
+# DEFAULT IS CPU, DELIBERATELY. Every committed threshold in this repo was
+# calibrated with the CPU EP, and the Android app runs NNAPI+CPU. Keeping CPU as
+# the default is what makes "Android-exact" true.
+#
+# On a GPU box the bulk jobs (100k+ image embeds in
+# 02_precompute_image_embeddings.py / precompute_tinyclip.py, 400k string
+# encodes in 01_build_text_classifiers.py) are otherwise CPU-bound. Opt in with:
+#
+#     export ORT_PROVIDERS=CUDAExecutionProvider,CPUExecutionProvider
+#
+# and install onnxruntime-gpu in place of onnxruntime.
+#
+# BEFORE TRUSTING ANY ARTIFACT BUILT THAT WAY, verify the GPU kernels agree with
+# the CPU ones on this model:
+#
+#     python research/common/parity_assets.py --check-providers
+#
+# A different EP is a different implementation, not just a different device.
+# Divergence here would silently invalidate the thresholds.
+_DEFAULT_PROVIDERS = ["CPUExecutionProvider"]
+
+
+def _providers() -> list[str]:
+    """Execution providers, from $ORT_PROVIDERS. Falls back to CPU."""
+    raw = os.environ.get("ORT_PROVIDERS", "").strip()
+    if not raw:
+        return list(_DEFAULT_PROVIDERS)
+    wanted = [p.strip() for p in raw.split(",") if p.strip()]
+    available = set(ort.get_available_providers())
+    usable = [p for p in wanted if p in available]
+    missing = [p for p in wanted if p not in available]
+    if missing:
+        print(f"[tinyclip_encoder] ignoring unavailable provider(s): {', '.join(missing)}")
+    if "CPUExecutionProvider" not in usable:
+        usable.append("CPUExecutionProvider")  # always keep a fallback
+    return usable
+
 
 def _l2normalize(v: np.ndarray) -> np.ndarray:
     """Mirror ClipEngine.l2normalize: return v unchanged if norm < 1e-8."""
@@ -47,11 +86,13 @@ def _l2normalize(v: np.ndarray) -> np.ndarray:
 
 
 class TinyClipEncoder:
-    def __init__(self, assets_dir: pathlib.Path = _ASSETS, intra_op_threads: int | None = None):
+    def __init__(self, assets_dir: pathlib.Path = _ASSETS, intra_op_threads: int | None = None,
+                 providers: list[str] | None = None):
         assets_dir = pathlib.Path(assets_dir)
         self.vision_path = assets_dir / "vision_model_fp32.onnx"
         self.text_path   = assets_dir / "text_model_int8.onnx"
         self.tok_path    = assets_dir / "custom_op_cliptok.onnx"
+        self.providers = providers if providers is not None else _providers()
 
         def _opts(register_ortx: bool = False) -> ort.SessionOptions:
             o = ort.SessionOptions()
@@ -61,18 +102,19 @@ class TinyClipEncoder:
                 o.register_custom_ops_library(ortx.get_library_path())
             return o
 
-        # Vision session (CPU; Android uses NNAPI+CPU fallback, math identical)
+        # Vision session (Android uses NNAPI+CPU fallback; CPU math identical)
         self.vision = ort.InferenceSession(
-            str(self.vision_path), _opts(), providers=["CPUExecutionProvider"]
+            str(self.vision_path), _opts(), providers=self.providers
         )
 
         # Text session
         self.text = ort.InferenceSession(
-            str(self.text_path), _opts(), providers=["CPUExecutionProvider"]
+            str(self.text_path), _opts(), providers=self.providers
         )
         self.text_has_mask = "attention_mask" in {i.name for i in self.text.get_inputs()}
 
-        # Tokenizer session (needs ORT-extensions custom op library)
+        # Tokenizer session stays on CPU regardless: it is a single custom op
+        # from ORT-extensions with no GPU kernel, and it is not a bottleneck.
         self.tok = ort.InferenceSession(
             str(self.tok_path), _opts(register_ortx=True), providers=["CPUExecutionProvider"]
         )

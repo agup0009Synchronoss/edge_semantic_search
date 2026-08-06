@@ -240,7 +240,7 @@ and vision within 4.2e-07 (~3 float32 ulp).
 |---|---|
 | `ModuleNotFoundError: tinyclip_encoder` / `ssl_bypass` / `templates` | You imported before `config`. `config` is what puts `research/common` on `sys.path` — import it first. |
 | `CERTIFICATE_VERIFY_FAILED` during model load | `ssl_bypass` was imported too late. It must precede transformers/gradio, which connect at import time. |
-| `ImportError: apply_chunking_to_forward` | You are running RAM in `venv_clip`. It needs `venv_ramclip` (transformers 4.44). |
+| `ImportError: apply_chunking_to_forward` | You are running RAM in `venv_clip` (it needs `venv_ramclip`), or `venv_ramclip` resolved `transformers>=4.57` — the function was removed there, inside the 4.x line, not at 5.0. `requirements.txt` pins `<4.57`. |
 | `AttributeError: scipy.interpolate.interp2d` | SciPy ≥ 1.14 in `venv_ramclip`. Pin 1.13.1. |
 | `verify_assets.py` reports MISMATCH | Someone regenerated the ONNX. Run `parity_assets.py` before trusting or re-writing the manifest. |
 | Models re-download every run | Stale `HF_HOME`. It is pinned per workstream in `config.py`; an exported `HF_HOME` overrides it. |

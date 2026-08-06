@@ -21,13 +21,18 @@
 torch>=2.0
 torchvision>=0.15
 
-# HARD UPPER BOUND. RAM's vendored BLIP-era ram/models/bert.py imports
-# transformers.modeling_utils.apply_chunking_to_forward, which was REMOVED in
-# transformers 5.x. Symptom: ImportError at RAM model construction.
-transformers>=4.40,<5
+# HARD UPPER BOUND — and NOT at the 5.0 boundary. RAM's vendored BLIP-era
+# ram/models/bert.py imports transformers.modeling_utils.apply_chunking_to_forward,
+# which was REMOVED IN 4.57.0, still inside the 4.x line. `<5` alone is not
+# enough — pip happily resolved 4.57.6 under that bound and it fails the same
+# way. Symptom: ImportError at RAM model construction ("cannot import name
+# 'apply_chunking_to_forward' from 'transformers.modeling_utils'").
+# Reproduced on transformers 4.57.6 (2026-08-06); confirmed present through the
+# 4.56.x line.
+transformers>=4.40,<4.57
 
-# transformers <5 caps huggingface-hub at <1.0. Stated explicitly so pip
-# resolves in one pass instead of backtracking through dozens of candidates.
+# transformers <4.57 caps huggingface-hub at <1.0 anyway. Stated explicitly so
+# pip resolves in one pass instead of backtracking through dozens of candidates.
 huggingface_hub<1.0
 
 # RAM upstream pins timm==0.4.12, which predates Python 3.11. 0.9+ still ships

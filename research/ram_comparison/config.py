@@ -122,9 +122,12 @@ THRESHOLDS_4585 = TEXT_DIR / "thresholds_4585.npy"   # NaN where uncalibrated
 UNCALIBRATED = float("nan")
 
 # ── UI defaults ───────────────────────────────────────────────────────────────
-# Global cosine cutoff applied to TinyCLIP tags that have no LVIS calibration.
-# Calibrated tags observed range 0.20-0.40 (balanced), so 0.30 is a sane middle.
-DEFAULT_UNCALIBRATED_THRESHOLD = 0.30
+# Global cosine cutoff applied to TinyCLIP tags that have no LVIS calibration
+# (or, with the "apply to all tags" toggle, to every tag). Calibrated tags
+# observed range 0.20-0.40 (balanced); 0.375 sits toward the top of that range
+# — project decision, tightened from the original 0.30 midpoint to cut down
+# knob-driven false positives on the ~3548 uncalibrated tags.
+DEFAULT_UNCALIBRATED_THRESHOLD = 0.375
 UNCALIBRATED_THRESHOLD_RANGE = (0.10, 0.60)
 DEFAULT_TOP_K = 25          # matches prod RAM's max_tags
 GRADIO_PORT_DEFAULT = 7863  # 7862 is the existing research/vitb32_benchmark app

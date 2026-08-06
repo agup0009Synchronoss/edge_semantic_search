@@ -77,15 +77,24 @@ class TinyClipTagger:
         return [n for n, p in config.CLASSIFIER_SETS.items() if p.exists()]
 
     # ── inference ─────────────────────────────────────────────────────────────
-    def effective_thresholds(self, knob: float) -> np.ndarray:
-        """Per-tag cutoffs: calibrated where we have one, knob elsewhere."""
+    def effective_thresholds(self, knob: float, override_all: bool = False) -> np.ndarray:
+        """Per-tag cutoffs.
+
+        Default: calibrated where we have one, knob elsewhere (project decision).
+        override_all=True: knob for every tag, calibration ignored entirely —
+        useful for seeing the vocabulary through one uniform cutoff instead of
+        the calibrated/uncalibrated split.
+        """
+        if override_all:
+            return np.full_like(self.thresholds, knob, dtype=np.float32)
         thr = self.thresholds.copy()
         thr[~np.isfinite(thr)] = knob
         return thr
 
     def tag(self, image: Image.Image, knob: float,
             classifier_set: str | None = None,
-            top_k: int | None = None) -> tuple[list[TagHit], dict]:
+            top_k: int | None = None,
+            override_all: bool = False) -> tuple[list[TagHit], dict]:
         """Return (hits above threshold, timing/debug info)."""
         name = classifier_set or self.classifier_set
         C = self.load_classifiers(name)
@@ -96,13 +105,18 @@ class TinyClipTagger:
 
         t1 = time.time()
         scores = (C @ vec).astype(np.float32)
-        thr = self.effective_thresholds(knob)
+        thr = self.effective_thresholds(knob, override_all=override_all)
         above = np.flatnonzero(scores >= thr)
         t_score = time.time() - t1
 
+        # `calibrated` reflects what was actually APPLIED to produce this hit,
+        # not merely what is on file — under override_all every tag used the
+        # knob, so every hit should read `knob`, including the 1037 tags that
+        # do have a calibrated value sitting unused in thresholds_4585.npy.
         hits = [
             TagHit(tag=self.tags[i], row=int(i), score=float(scores[i]),
-                   threshold=float(thr[i]), calibrated=bool(np.isfinite(self.thresholds[i])),
+                   threshold=float(thr[i]),
+                   calibrated=(not override_all) and bool(np.isfinite(self.thresholds[i])),
                    margin=float(scores[i] - thr[i]))
             for i in above
         ]
@@ -126,5 +140,6 @@ class TinyClipTagger:
             "n_calibrated_hits": sum(1 for h in hits if h.calibrated),
             "score_max": float(scores.max()),
             "knob": knob,
+            "override_all": override_all,
         }
         return hits, info

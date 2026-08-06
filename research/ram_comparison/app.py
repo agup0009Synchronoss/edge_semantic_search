@@ -107,7 +107,7 @@ def _split(ram_hits, tiny_hits):
     return both, ram_only, tiny_only, ram_by, tiny_by
 
 
-def run(image, knob, classifier_set, ram_size, ram_offset, top_k):
+def run(image, knob, override_all, classifier_set, ram_size, ram_offset, top_k):
     if image is None:
         return ("Upload an image first.", "", "", "", "", "", [], None)
 
@@ -116,7 +116,8 @@ def run(image, knob, classifier_set, ram_size, ram_offset, top_k):
     tiny = get_tiny()
     tiny_hits, tiny_info = tiny.tag(img, knob=knob,
                                     classifier_set=classifier_set,
-                                    top_k=int(top_k) or None)
+                                    top_k=int(top_k) or None,
+                                    override_all=override_all)
     ram = get_ram()
     ram_hits, ram_info = ram.tag(img, image_size=int(ram_size),
                                  top_k=int(top_k) or None,
@@ -131,8 +132,10 @@ def run(image, knob, classifier_set, ram_size, ram_offset, top_k):
         + (f" · offset {ram_offset:+.2f}" if ram_offset else "")
         + "\n\n"
         f"**TinyCLIP** {tiny_info['n_above']} tags above threshold "
-        f"(showing {tiny_info['n_returned']}, {tiny_info['n_calibrated_hits']} calibrated) · "
-        f"`{tiny_info['classifier_set']}` · knob {knob:.2f} · "
+        f"(showing {tiny_info['n_returned']}"
+        + (", knob applied to ALL tags" if tiny_info["override_all"]
+           else f", {tiny_info['n_calibrated_hits']} calibrated")
+        + f") · `{tiny_info['classifier_set']}` · knob {knob:.2f} · "
         f"{tiny_info['encode_ms']:.0f} ms encode + {tiny_info['score_ms']:.1f} ms score"
         "\n\n"
         f"**Agreement** {len(both)} both · {len(ram_only)} RAM-only · "
@@ -209,7 +212,15 @@ def build_ui() -> gr.Blocks:
                     value=config.DEFAULT_UNCALIBRATED_THRESHOLD,
                     label="TinyCLIP threshold for UNCALIBRATED tags (the knob)",
                     info="Applies to the ~3548 tags with no LVIS calibration. "
-                         "Calibrated tags keep their own cutoff.",
+                         "Calibrated tags keep their own cutoff — unless the "
+                         "toggle below is on.",
+                )
+                override_all = gr.Checkbox(
+                    value=False,
+                    label="Apply this threshold to ALL tags (ignore calibration)",
+                    info="Overrides the 1037 LVIS-calibrated cutoffs too, so every "
+                         "tag uses the knob above. Every hit will show `knob`, "
+                         "even tags that do have a calibrated value on file.",
                 )
                 classifier_set = gr.Radio(
                     choices=["templates", "llm"], value=default_set,
@@ -261,7 +272,7 @@ def build_ui() -> gr.Blocks:
 
         outputs = [status, ram_out, tiny_out, both_out, ram_only_out,
                    tiny_only_out, table, csv_file]
-        inputs = [image, knob, classifier_set, ram_size, ram_offset, top_k]
+        inputs = [image, knob, override_all, classifier_set, ram_size, ram_offset, top_k]
         go.click(run, inputs=inputs, outputs=outputs)
 
         # Headers for the side-by-side lanes (gr.Markdown has no visible label)

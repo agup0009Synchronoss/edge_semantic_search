@@ -91,23 +91,10 @@ class TinyClipTagger:
         thr[~np.isfinite(thr)] = knob
         return thr
 
-    def tag(self, image: Image.Image, knob: float,
-            classifier_set: str | None = None,
-            top_k: int | None = None,
-            override_all: bool = False) -> tuple[list[TagHit], dict]:
-        """Return (hits above threshold, timing/debug info)."""
-        name = classifier_set or self.classifier_set
-        C = self.load_classifiers(name)
-
-        t0 = time.time()
-        vec = self.encoder.encode_image(image)
-        t_encode = time.time() - t0
-
-        t1 = time.time()
-        scores = (C @ vec).astype(np.float32)
-        thr = self.effective_thresholds(knob, override_all=override_all)
+    def _hits_from_scores(self, scores: np.ndarray, thr: np.ndarray,
+                          override_all: bool, top_k: int | None):
+        """Threshold, wrap and rank one score vector. Returns (hits, n_above)."""
         above = np.flatnonzero(scores >= thr)
-        t_score = time.time() - t1
 
         # `calibrated` reflects what was actually APPLIED to produce this hit,
         # not merely what is on file — under override_all every tag used the
@@ -127,19 +114,62 @@ class TinyClipTagger:
         # and outranks 'train' at cosine 0.43 over a 0.36 threshold — which
         # buries the correct tags under junk like 'masher' and 'sawbuck'.
         hits.sort(key=lambda h: h.score, reverse=True)
-        n_before_topk = len(hits)
+        n_above = len(hits)
         if top_k:
             hits = hits[:top_k]
+        return hits, n_above
 
-        info = {
-            "classifier_set": name,
-            "encode_ms": t_encode * 1000,
-            "score_ms": t_score * 1000,
-            "n_above": n_before_topk,
-            "n_returned": len(hits),
-            "n_calibrated_hits": sum(1 for h in hits if h.calibrated),
-            "score_max": float(scores.max()),
-            "knob": knob,
-            "override_all": override_all,
-        }
-        return hits, info
+    def tag_sets(self, image: Image.Image, knob: float,
+                 sets: list[str] | None = None,
+                 top_k: int | None = None,
+                 override_all: bool = False) -> dict[str, tuple[list[TagHit], dict]]:
+        """Score ONE image against several classifier sets, sharing the encode.
+
+        This is the whole reason an N-way comparison is nearly free: the image
+        goes through the vision encoder once (~200 ms) and each additional
+        classifier set costs only a (4585, 512) @ (512,) matmul — single-digit
+        ms. Calling tag() per set would re-encode the image every time.
+
+        Returns {set_name: (hits, info)}.
+        """
+        names = list(sets) if sets else [self.classifier_set]
+        # Load matrices BEFORE timing so a first-call disk read is not counted
+        # as encode/score latency.
+        mats = {n: self.load_classifiers(n) for n in names}
+
+        t0 = time.time()
+        vec = self.encoder.encode_image(image)
+        t_encode = time.time() - t0
+
+        thr = self.effective_thresholds(knob, override_all=override_all)
+
+        out: dict[str, tuple[list[TagHit], dict]] = {}
+        for name in names:
+            t1 = time.time()
+            scores = (mats[name] @ vec).astype(np.float32)
+            hits, n_above = self._hits_from_scores(scores, thr, override_all, top_k)
+            t_score = time.time() - t1
+
+            out[name] = (hits, {
+                "classifier_set": name,
+                # Shared across every set in this call — reported per set for
+                # convenience, but it was paid once.
+                "encode_ms": t_encode * 1000,
+                "score_ms": t_score * 1000,
+                "n_above": n_above,
+                "n_returned": len(hits),
+                "n_calibrated_hits": sum(1 for h in hits if h.calibrated),
+                "score_max": float(scores.max()),
+                "knob": knob,
+                "override_all": override_all,
+            })
+        return out
+
+    def tag(self, image: Image.Image, knob: float,
+            classifier_set: str | None = None,
+            top_k: int | None = None,
+            override_all: bool = False) -> tuple[list[TagHit], dict]:
+        """Single-set convenience wrapper around tag_sets()."""
+        name = classifier_set or self.classifier_set
+        return self.tag_sets(image, knob, sets=[name],
+                             top_k=top_k, override_all=override_all)[name]

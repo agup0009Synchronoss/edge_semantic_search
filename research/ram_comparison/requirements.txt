@@ -22,16 +22,24 @@ torch>=2.0
 torchvision>=0.15
 
 # HARD UPPER BOUND — and NOT at the 5.0 boundary. RAM's vendored BLIP-era
-# ram/models/bert.py imports transformers.modeling_utils.apply_chunking_to_forward,
-# which was REMOVED IN 4.57.0, still inside the 4.x line. `<5` alone is not
-# enough — pip happily resolved 4.57.6 under that bound and it fails the same
-# way. Symptom: ImportError at RAM model construction ("cannot import name
-# 'apply_chunking_to_forward' from 'transformers.modeling_utils'").
-# Reproduced on transformers 4.57.6 (2026-08-06); confirmed present through the
-# 4.56.x line.
-transformers>=4.40,<4.57
+# ram/models/bert.py does:
+#   from transformers.modeling_utils import (
+#       PreTrainedModel, apply_chunking_to_forward,
+#       find_pruneable_heads_and_indices, prune_linear_layer,
+#   )
+# modeling_utils.py stopped re-exporting apply_chunking_to_forward from
+# .pytorch_utils between 4.55.0 (present) and 4.56.0 (gone) — the function
+# itself still exists in pytorch_utils.py, just not re-exported where RAM
+# imports it from. Nowhere near the 5.0 boundary the first cut of this bound
+# assumed.
+#
+# Bisected against upstream source on 2026-08-06 (present: 4.44.2, 4.49.0,
+# 4.52.0-4.55.0; absent: 4.56.0, 4.56.2, 4.57.6). Reproduced live: pip resolved
+# 4.57.6 under an earlier `<5` bound, then 4.56.2 under an earlier `<4.57`
+# bound, and both failed identically at RAM model construction.
+transformers>=4.40,<4.56
 
-# transformers <4.57 caps huggingface-hub at <1.0 anyway. Stated explicitly so
+# transformers <4.56 caps huggingface-hub at <1.0 anyway. Stated explicitly so
 # pip resolves in one pass instead of backtracking through dozens of candidates.
 huggingface_hub<1.0
 

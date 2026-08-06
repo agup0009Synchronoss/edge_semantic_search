@@ -308,7 +308,7 @@ that the box can actually serve the app. Expect every line to read `PASS`.
 
 | Symptom | Cause and fix |
 |---|---|
-| `ImportError: apply_chunking_to_forward` | transformers `>=4.57` got in — that function was removed there, still inside the 4.x line, not at the 5.0 boundary. `requirements.txt` pins `<4.57`. Check `venv_ramclip/bin/pip show transformers`; fix in place with `venv_ramclip/bin/pip install "transformers>=4.40,<4.57"` — no need to rebuild the venv. |
+| `ImportError: apply_chunking_to_forward` | transformers `>=4.56` got in — `modeling_utils.py` stopped re-exporting it from `pytorch_utils.py` between 4.55.0 and 4.56.0, well inside the 4.x line, nowhere near 5.0. `requirements.txt` pins `<4.56`. Check `venv_ramclip/bin/pip show transformers`; fix in place with `venv_ramclip/bin/pip install "transformers>=4.40,<4.56"` — no need to rebuild the venv. |
 | `AttributeError: scipy.interpolate.interp2d` | SciPy ≥ 1.14. The bound is `scipy<1.14`; a `--system-site` venv may be shadowing it. |
 | pip backtracks for ages on `gradio` | gradio 6 vs `huggingface_hub<1.0` are unsatisfiable together. The `gradio>=5,<6` bound prevents it — do not relax it. |
 | `ModuleNotFoundError: ram` | `vendor/recognize-anything` was not cloned. Re-run the bootstrap. |

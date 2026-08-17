@@ -97,8 +97,13 @@ def has_sense_qualifier(raw_name: str) -> bool:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--thresholds", choices=("balanced", "naive"), default="balanced",
-                    help="which LVIS calibration to inherit (default: balanced)")
+    ap.add_argument("--thresholds",
+                    choices=("balanced", "naive", *config.PRECISION_THRESHOLDS),
+                    default="balanced",
+                    help="which LVIS calibration to inherit. balanced/naive maximize "
+                         "Fbeta; p80/p85/p90 guarantee that precision floor on a "
+                         "balanced subset and are NaN where unachievable "
+                         "(default: balanced)")
     args = ap.parse_args()
 
     config.ensure_dirs()
@@ -107,12 +112,25 @@ def main() -> None:
     assert len(ram_tags) == config.N_TAGS, f"expected {config.N_TAGS}, got {len(ram_tags)}"
 
     lvis = json.loads(config.LVIS_TAG_ORDER.read_text(encoding="utf8"))["tags"]
-    thr_path = (config.LVIS_BALANCED_THRESHOLDS if args.thresholds == "balanced"
-                else config.LVIS_NAIVE_THRESHOLDS)
+    if args.thresholds in config.PRECISION_THRESHOLDS:
+        thr_path = config.PRECISION_THRESHOLDS[args.thresholds]
+        if not thr_path.exists():
+            raise SystemExit(
+                f"{thr_path} not found — build it first:\n"
+                f"  ./venv_ramclip/Scripts/python.exe 04_precision_calibration.py"
+            )
+    elif args.thresholds == "balanced":
+        thr_path = config.LVIS_BALANCED_THRESHOLDS
+    else:
+        thr_path = config.LVIS_NAIVE_THRESHOLDS
     lvis_thr = np.load(thr_path)
     assert len(lvis_thr) == len(lvis), f"{len(lvis_thr)} thresholds vs {len(lvis)} tags"
+    # The precision sets carry NaN for tags that could not hit their floor, so
+    # min/max would be NaN-poisoned. Report over the finite entries only.
+    n_finite = int(np.isfinite(lvis_thr).sum())
     print(f"LVIS: {len(lvis)} tags, thresholds from {thr_path.name} "
-          f"(range {lvis_thr.min():.2f}-{lvis_thr.max():.2f})")
+          f"({n_finite} calibrated, range {np.nanmin(lvis_thr):.2f}-{np.nanmax(lvis_thr):.2f}"
+          + (f", {len(lvis_thr) - n_finite} NA)" if n_finite < len(lvis_thr) else ")"))
     print(f"RAM:  {len(ram_tags)} tags")
 
     # RAM lookup: variant key -> (row, ram_side_rule). First writer wins so an
@@ -154,6 +172,7 @@ def main() -> None:
     rows_out = []
     n_dropped_ambiguous = 0
     n_dropped_asym = 0
+    n_dropped_na = 0
 
     def _row(r_row, c, applied, note):
         rule, ram_rule, l_row, name, surface, thr, is_syn = c
@@ -191,6 +210,16 @@ def main() -> None:
             rows_out.append(_row(r_row, c, 0, "asymmetric_variant_dropped"))
             continue
 
+        # The precision-target sets (p80/p85/p90) are NaN wherever the LVIS tag
+        # could not be calibrated to that floor. A NaN must NOT be written as a
+        # live threshold: every `score >= NaN` comparison is False, so the tag
+        # would silently never fire while still looking calibrated. Leave the
+        # row NaN so it falls through to the UI knob, same as an unmapped tag.
+        if not np.isfinite(thr):
+            n_dropped_na += 1
+            rows_out.append(_row(r_row, c, 0, "source_threshold_na"))
+            continue
+
         note = "" if len(cands) == 1 else "contested_resolved"
         if ram_rule != "exact" and rule == "exact":
             note = (note + ";" if note else "") + "review_ram_variant"
@@ -222,6 +251,9 @@ def main() -> None:
         print(f"  {n_dropped_ambiguous} RAM tags dropped as ambiguous (sense conflict)")
     if n_dropped_asym:
         print(f"  {n_dropped_asym} dropped as asymmetric variant matches")
+    if n_dropped_na:
+        print(f"  {n_dropped_na} mapped but NA in {thr_path.name} "
+              f"(tag never reached the precision floor) — these use the UI knob")
     n_review = sum(1 for r in rows_out if r["applied"] and "review" in r["note"])
     if n_review:
         print(f"  {n_review} applied but flagged review_ram_variant — "

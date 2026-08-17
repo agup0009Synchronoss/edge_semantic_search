@@ -1,13 +1,40 @@
-gradio==6.19.0
-httpx==0.28.1
-huggingface_hub==1.19.0
-numpy==2.4.6
-onnx==1.22.0
-onnxruntime==1.27.0
-onnxruntime_extensions==0.15.0
-pillow==12.2.0
-requests==2.34.2
-sentence-transformers==5.6.0
-torch==2.5.1
-torchvision==0.20.1
-transformers==5.12.1
+# Environment for the TinyCLIP vs CLIP ViT-B/32 side-by-side app, and for the
+# LVIS calibration workstream, which reuses this venv.
+#
+# Install:  ./setup_venv.sh        (Linux / jovyan)
+#           ./setup_venv.ps1       (Windows)
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# BOUNDS POLICY
+#
+# Everything is left open so wheels resolve against whatever Python the host
+# image ships. Unlike the sibling ram_comparison env, this one has NO
+# transformers-4.x constraint, so modern gradio/transformers are fine here.
+# The single upper bound below is a real packaging limit, not a preference.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# --- CLIP ViT-B/32 lane ---
+# Produces the text embeddings that match vg_clip_embeddings.pkl. Must remain
+# the clip-ViT-B-32 model — the pkl was built with it, and a different model
+# would put the two lanes in different spaces.
+sentence-transformers>=3
+transformers>=4.40
+torch>=2.0
+torchvision>=0.15
+
+# --- TinyCLIP lane (Android-exact ONNX) ---
+# onnxruntime-extensions supplies the CLIPTokenizer custom op.
+onnx>=1.15
+onnxruntime>=1.17
+onnxruntime-extensions>=0.12
+
+# --- shared ---
+gradio>=5
+
+# HARD UPPER BOUND. onnxruntime has no numpy 3.x wheels yet.
+numpy>=1.26,<3
+
+pillow>=10
+requests>=2.28
+tqdm>=4.60
+scikit-learn>=1.3

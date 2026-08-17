@@ -30,8 +30,15 @@ margin-ranked top hits were `file`, `masher`, `oar`, `pegleg`, `sawbuck`, and th
 ## Setup
 
 ```bash
-./setup_venv.ps1
+./setup_venv.sh          # Linux/macOS; auto-detects GPU
 ```
+
+```powershell
+./setup_venv.ps1         # Windows
+```
+
+Standing this up on a remote/GPU box? [`../../docs/jovyan_deployment.md`](../../docs/jovyan_deployment.md)
+does it in one command and needs nothing copied across.
 
 A dedicated `venv_ramclip` is required, not a convenience. RAM's vendored
 BLIP-era `ram/models/bert.py` imports `transformers.modeling_utils.apply_chunking_to_forward`,
@@ -130,6 +137,46 @@ independent evidence the benchmark harness is wired correctly.
 ./venv_ramclip/Scripts/python.exe 03_benchmark_classifiers.py --combined --regime balanced
 ```
 
+## Precision-target calibration
+
+Every threshold above comes from `argmax(Fβ)`. That *optimizes* for precision but
+promises nothing: a tag whose Fβ peaks at precision 0.52 still gets that
+threshold. `04_precision_calibration.py` inverts it — for each target it picks the
+threshold that actually **delivers** ≥80/85/90% precision on a balanced LVIS
+subset, and marks the tag NA when none can. The useful property is that a
+consumer can then say "calibrated to ≥85%, or not calibrated at all".
+
+It scores with `classifiers_templates.npy` — the same vector the app's
+`templates` lane uses — against LVIS ground truth, reusing
+`07_balanced_calibration.py`'s exact subset construction (verified byte-identical,
+`default_rng(seed + cat_id)`), so the two calibrations are directly comparable.
+
+| target | calibrated / 636 eligible | median threshold | median recall | mean achieved precision |
+|---|---|---|---|---|
+| ≥80% | 539 (85%) | 0.340 | 0.717 | 0.823 |
+| ≥85% | 497 (78%) | 0.350 | 0.629 | 0.874 |
+| ≥90% | 452 (71%) | 0.360 | 0.531 | 0.923 |
+
+Eligibility is deliberately strict: mapped to a RAM tag **and** >20 ground-truth
+images (1037 → 636), plus ≥5 predicted positives at a grid point for its precision
+to count. Without that guard a spurious 2/2 = 1.0 outranks a genuine 41/45.
+
+**Removing the grid cap changed nothing.** The search runs to 0.95, yet no chosen
+threshold exceeds 0.415. What limits the higher targets is score separability —
+97 eligible tags cannot reach 80% anywhere on `[0.20, 0.95]`.
+
+**Read the targets correctly.** Precision on a forced 50/50 subset is not
+deployment precision. With `f/r` fixed by the operating point, precision at real
+prevalence π is `π / (π + (1−π)·f/r)`, so at a realistic ~1% prevalence an 80%
+balanced point yields **~4%** and 90% yields **~8%**. These measure intrinsic
+separability. `p90` means "cleared 90% on a balanced subset", never "90% precise
+in the wild".
+
+```bash
+./venv_ramclip/Scripts/python.exe 04_precision_calibration.py
+./venv_ramclip/Scripts/python.exe 02_build_tag_mapping.py --thresholds p85   # to use one
+```
+
 ## Scripts
 
 | file | role |
@@ -139,6 +186,7 @@ independent evidence the benchmark harness is wired correctly.
 | `01_build_text_classifiers.py` | `--source templates\|llm` → `(4585, 512)` super-embeddings |
 | `02_build_tag_mapping.py` | LVIS 1203 → RAM 4585 matching, emits audit CSV + threshold array |
 | `03_benchmark_classifiers.py` | quantitative templates-vs-llm A/B on LVIS ground truth |
+| `04_precision_calibration.py` | per-tag thresholds that guarantee a precision floor (p80/p85/p90) |
 | `ingest_descriptions.py` | validates description sources, reports exactly what's missing |
 | `assets/` | the committed LLM descriptions + the tag batches that produced them |
 | `results/` | committed mapping + benchmark outputs |

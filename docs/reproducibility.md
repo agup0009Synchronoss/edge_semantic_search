@@ -7,8 +7,13 @@ need downloads measured in gigabytes, and one needs a corpus this repo cannot
 distribute.
 
 **Conventions:** commands assume the repo root as the working directory.
-PowerShell is shown because the work was done on Windows; the bash equivalents
-differ only in path separators and venv activation.
+PowerShell is shown because the work was done on Windows; on Linux use
+`setup_venv.sh` instead of `setup_venv.ps1` and `venv_*/bin/python` instead of
+`venv_*/Scripts/python.exe`.
+
+**Just want the two Gradio apps running on a Linux or GPU box?**
+[`jovyan_deployment.md`](jovyan_deployment.md) is the short path — one bootstrap
+command, and it explains which workloads actually use a GPU.
 
 ---
 
@@ -235,7 +240,7 @@ and vision within 4.2e-07 (~3 float32 ulp).
 |---|---|
 | `ModuleNotFoundError: tinyclip_encoder` / `ssl_bypass` / `templates` | You imported before `config`. `config` is what puts `research/common` on `sys.path` — import it first. |
 | `CERTIFICATE_VERIFY_FAILED` during model load | `ssl_bypass` was imported too late. It must precede transformers/gradio, which connect at import time. |
-| `ImportError: apply_chunking_to_forward` | You are running RAM in `venv_clip`. It needs `venv_ramclip` (transformers 4.44). |
+| `ImportError: apply_chunking_to_forward` | You are running RAM in `venv_clip` (it needs `venv_ramclip`), or `venv_ramclip` resolved `transformers>=4.56` — `modeling_utils.py` stopped re-exporting it between 4.55.0 and 4.56.0, inside the 4.x line, not at 5.0. `requirements.txt` pins `<4.56`. |
 | `AttributeError: scipy.interpolate.interp2d` | SciPy ≥ 1.14 in `venv_ramclip`. Pin 1.13.1. |
 | `verify_assets.py` reports MISMATCH | Someone regenerated the ONNX. Run `parity_assets.py` before trusting or re-writing the manifest. |
 | Models re-download every run | Stale `HF_HOME`. It is pinned per workstream in `config.py`; an exported `HF_HOME` overrides it. |

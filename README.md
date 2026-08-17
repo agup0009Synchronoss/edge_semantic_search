@@ -44,6 +44,7 @@ models, one prompt-template set. Nothing is reimplemented downstream.
 
 - **Just want the app?** → [Build & install](#build--install) below.
 - **Want to reproduce the research?** → [`docs/reproducibility.md`](docs/reproducibility.md)
+- **Deploying the Gradio apps to a Linux/GPU box?** → [`docs/jovyan_deployment.md`](docs/jovyan_deployment.md)
 - **Want the full POC write-up?** → [`docs/android_poc.md`](docs/android_poc.md)
 - **Want the numbers?** → [`research/README.md`](research/README.md)
 

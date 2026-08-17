@@ -61,6 +61,37 @@ def best_on_grid(fbeta: np.ndarray, grid: np.ndarray):
     return k, float(grid[k]), float(fbeta[k])
 
 
+def best_at_precision(precision: np.ndarray, recall: np.ndarray, pp: np.ndarray,
+                      grid: np.ndarray, target: float, min_pp: int = 5):
+    """Lowest threshold that DELIVERS `precision >= target`, or None.
+
+    This is the constraint-satisfaction counterpart to `best_on_grid`, which
+    maximizes an objective. Fbeta-argmax says "lean toward precision"; this says
+    "clear this precision bar or report that you cannot".
+
+    Lowest qualifying threshold == highest recall: recall is monotonically
+    non-increasing in threshold, so among all grid points meeting the target the
+    first one is the best trade. Scanning for the first qualifying point (rather
+    than argmax of precision) is also robust to the non-monotonic wobble that
+    real precision curves have near the top of the grid.
+
+    `min_pp` guards the estimate itself. At high thresholds precision is computed
+    from a handful of predictions, so 2/2 == 1.0 would otherwise beat a genuine
+    40/45. Points with fewer than `min_pp` predicted positives are not eligible.
+
+    Returns (index, threshold, precision, recall), or None when no grid point
+    satisfies both the target and the support guard.
+    """
+    precision = np.asarray(precision, dtype=np.float64)
+    pp = np.asarray(pp, dtype=np.int64)
+    eligible = (pp >= int(min_pp)) & (precision >= float(target))
+    hits = np.flatnonzero(eligible)
+    if hits.size == 0:
+        return None
+    k = int(hits[0])
+    return k, float(grid[k]), float(precision[k]), float(np.asarray(recall)[k])
+
+
 def micro_prf(tp_sum: np.ndarray, pp_sum: np.ndarray, p_total_sum: int, beta_sq: float):
     """Micro-averaged Precision/Recall/Fbeta over the grid from summed counts."""
     return prf_from_counts(tp_sum, pp_sum, p_total_sum, beta_sq)

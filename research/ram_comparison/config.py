@@ -121,6 +121,37 @@ THRESHOLDS_4585 = TEXT_DIR / "thresholds_4585.npy"   # NaN where uncalibrated
 # Sentinel for "no calibrated threshold — use the UI knob"
 UNCALIBRATED = float("nan")
 
+# ── Precision-target calibration (04_precision_calibration.py) ────────────────
+# Fbeta calibration OPTIMIZES for precision; these sets GUARANTEE it. A tag is
+# calibrated to >= its target on a balanced LVIS subset, or it is NaN (NA).
+#
+# These are small and committed, so they are written straight to results/ rather
+# than into the gitignored data/ tree.
+#
+# IMPORTANT: the arrays are (1203,) indexed by LVIS row, but they are derived
+# from the RAM-tag TEMPLATE embeddings (classifiers_templates.npy), not from the
+# calibration project's own classifiers_combined.npy. Same shape as
+# lvis_calibration/results/balanced_thresholds.npy, different meaning — they are
+# NOT interchangeable with it.
+#
+# And note what "p90" means: >= 90% precision ON A BALANCED 50/50 SUBSET. At a
+# realistic ~1% prevalence the same operating point yields far lower precision
+# (see the README). These measure intrinsic separability, not deployment.
+RESULTS = HERE / "results"
+PRECISION_TARGETS = (0.80, 0.85, 0.90)
+
+
+def precision_set_name(target: float) -> str:
+    """0.85 -> 'p85'."""
+    return f"p{int(round(target * 100))}"
+
+
+PRECISION_THRESHOLDS = {
+    precision_set_name(t): RESULTS / f"precision_thresholds_{precision_set_name(t)}.npy"
+    for t in PRECISION_TARGETS
+}
+PRECISION_CALIB_CSV = RESULTS / "precision_calibration.csv"
+
 # ── UI defaults ───────────────────────────────────────────────────────────────
 # Global cosine cutoff applied to TinyCLIP tags that have no LVIS calibration
 # (or, with the "apply to all tags" toggle, to every tag). Calibrated tags
@@ -135,7 +166,7 @@ GRADIO_PORT_DEFAULT = 7863  # 7862 is the existing research/vitb32_benchmark app
 
 def ensure_dirs() -> None:
     """Create all output directories (safe to call repeatedly)."""
-    for d in (RAM_DIR, TEXT_DIR, LLM_DESC_DIR, CACHE_DIR, VENDOR_DIR):
+    for d in (RAM_DIR, TEXT_DIR, LLM_DESC_DIR, CACHE_DIR, VENDOR_DIR, RESULTS):
         d.mkdir(parents=True, exist_ok=True)
 
 
